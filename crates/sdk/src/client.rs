@@ -38,7 +38,7 @@ impl SemanticaTaskClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SemanticaTaskClient;
+    /// # use semantica_task_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// # Ok(())
@@ -96,7 +96,7 @@ impl SemanticaTaskClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SemanticaTaskClient;
+    /// # use semantica_task_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// let response = client.cancel("job-123").await?;
@@ -124,7 +124,7 @@ impl SemanticaTaskClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SemanticaTaskClient;
+    /// # use semantica_task_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// let response = client.tail_logs("job-123", Some(100)).await?;

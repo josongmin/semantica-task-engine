@@ -1,17 +1,17 @@
-//! Semantica SDK - Rust Client Library
+//! SemanticaTask SDK - Rust Client Library
 //!
-//! Provides a convenient client for interacting with Semantica Task Engine daemon.
+//! Provides a convenient client for interacting with SemanticaTask Engine daemon.
 //!
 //! # Example
 //!
 //! ```no_run
-//! use semantica_sdk::{SematicaClient, EnqueueRequest};
+//! use semantica_task_sdk::{SemanticaTaskClient, EnqueueRequest};
 //! use serde_json::json;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Connect to daemon
-//!     let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+//!     let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
 //!
 //!     // Enqueue a job
 //!     let response = client.enqueue(EnqueueRequest {
