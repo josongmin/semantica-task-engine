@@ -13,7 +13,7 @@ AI Native Dev Task Orchestrator - 로컬 환경에서 실행되는 고성능 태
 
 ## 아키텍처
 
-Hexagonal Architecture 기반 (ADR-001):
+Hexagonal Architecture 기반:
 - **Domain**: 순수 비즈니스 로직 (Job, JobState, 상태 전이)
 - **Port**: 외부 의존성 인터페이스 (JobRepository, TaskExecutor, SystemProbe)
 - **Application**: Use-case 레이어 (Worker, Scheduler, Recovery, Maintenance)
@@ -168,8 +168,6 @@ semantica-task-engine/
 │   ├── daemon/             # Main entry point (DI 조립)
 │   ├── cli/                # CLI 도구
 │   └── integration-tests/  # Phase DoD 통합 테스트
-├── ADR_v2/                 # Architecture Decision Records
-├── docs/                   # 문서 (API 명세, 운영 가이드)
 ├── scripts/                # 배포 및 검증 스크립트
 ├── Dockerfile              # 프로덕션 이미지
 ├── docker-compose.yml      # 로컬/프로덕션 배포
@@ -237,21 +235,6 @@ just dev      # fmt + clippy + test
 just check    # 전체 체크
 just verify   # 검증 스크립트 실행
 ```
-
-## 문서
-
-### 아키텍처 및 설계
-- [ADR-000: Master Integration](./ADR_v2/ADR-000-master-integration.md) - 문서 우선순위
-- [ADR-001: System Architecture](./ADR_v2/ADR-001-system-architecture.md) - Hexagonal 구조
-- [ADR-002: Operational Semantics](./ADR_v2/ADR-002-operational-semantics.md) - Failure 처리
-- [ADR-010: Database Persistence](./ADR_v2/ADR-010-database-persistence.md) - 스키마 SSOT
-- [ADR-020: API Contract](./ADR_v2/ADR-020-api-contract.md) - JSON-RPC 명세
-- [ADR-030: Testing Strategy](./ADR_v2/ADR-030-testing-strategy.md) - 테스트 계층
-- [ADR-050: Development Roadmap](./ADR_v2/ADR-050-development-roadmap.md) - Phase 정의
-
-### 운영
-- [운영 가이드](./docs/operations.md) - 배포, 모니터링, 장애 대응
-- [API 스펙](./docs/api-spec.md) - JSON-RPC API 상세
 
 ## 기술 스택
 
