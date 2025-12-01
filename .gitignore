@@ -36,6 +36,10 @@ logs/
 # Temporary files
 .temp/
 
+# Documentation
+ADR_v2/
+docs/
+
 # Python
 .venv/
 __pycache__/
