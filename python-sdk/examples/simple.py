@@ -6,17 +6,17 @@ Usage:
 """
 
 import asyncio
-from semantica import SematicaClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 
 async def main():
-    print("Semantica Python SDK - Simple Example")
+    print("SemanticaTask Python SDK - Simple Example")
     print("=" * 40)
     print()
 
     # 1. Connect to daemon
     print("1. Connecting to daemon...")
-    async with SematicaClient("http://127.0.0.1:9527") as client:
+    async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
         print("   ✓ Connected\n")
 
         # 2. Enqueue a job

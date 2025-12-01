@@ -1,13 +1,13 @@
-# Semantica Task Engine - AI Agent Usage Guide
+# SemanticaTask Engine - AI Agent Usage Guide
 
 **Target Audience**: AI Agents (Claude, GPT, etc.)  
 **Goal**: Enable AI agents to queue and manage long-running tasks efficiently
 
 ---
 
-## 📖 What is Semantica?
+## 📖 What is SemanticaTask?
 
-Semantica is a **local task orchestrator daemon** that manages background jobs for AI-powered developer tools.
+SemanticaTask is a **local task orchestrator daemon** that manages background jobs for AI-powered developer tools.
 
 **Core Capabilities**:
 - ✅ Queue tasks (indexing, analysis, builds) without blocking the main workflow
@@ -62,10 +62,10 @@ pip install git+https://github.com/<username>/semantica-task-engine#subdirectory
 
 ```python
 import asyncio
-from semantica import SematicaClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def main():
-    async with SematicaClient("http://127.0.0.1:9527") as client:
+    async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
         response = await client.enqueue(
             EnqueueRequest(
                 job_type="INDEX_FILE",           # What to do
@@ -97,7 +97,7 @@ asyncio.run(main())
 
 ```python
 async def index_file(file_path: str):
-    async with SematicaClient() as client:
+    async with SemanticaTaskClient() as client:
         # Same subject_key = only latest job runs
         response = await client.enqueue(
             EnqueueRequest(
@@ -120,7 +120,7 @@ async def index_file(file_path: str):
 
 ```python
 async def schedule_full_reindex():
-    async with SematicaClient() as client:
+    async with SemanticaTaskClient() as client:
         response = await client.enqueue(
             EnqueueRequest(
                 job_type="FULL_REINDEX",
@@ -153,7 +153,7 @@ payload = {
 
 ```python
 async def show_job_logs(job_id: str):
-    async with SematicaClient() as client:
+    async with SemanticaTaskClient() as client:
         logs = await client.tail_logs(job_id, lines=50)
         
         if not logs.lines:
@@ -180,7 +180,7 @@ Last 3 lines:
 
 ```python
 async def cancel_job(job_id: str):
-    async with SematicaClient() as client:
+    async with SemanticaTaskClient() as client:
         response = await client.cancel(job_id)
         
         if response.cancelled:
@@ -221,10 +221,10 @@ User wants to cancel?
 
 ## 📋 API Reference (Python SDK)
 
-### `SematicaClient`
+### `SemanticaTaskClient`
 
 ```python
-async with SematicaClient(url: str = "http://127.0.0.1:9527") as client:
+async with SemanticaTaskClient(url: str = "http://127.0.0.1:9527") as client:
     ...
 ```
 
@@ -300,10 +300,10 @@ for line in response.lines:
 ### Connection Errors
 
 ```python
-from semantica import SematicaClient, ConnectionError
+from semantica import SemanticaTaskClient, ConnectionError
 
 try:
-    async with SematicaClient("http://127.0.0.1:9527") as client:
+    async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
         response = await client.enqueue(...)
 except ConnectionError as e:
     print(f"Daemon not running? {e.message}")
@@ -419,12 +419,12 @@ priority = -10
 
 ```python
 import asyncio
-from semantica import SematicaClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def handle_file_edit(file_path: str, content: str):
     """Called when user saves a file"""
     
-    async with SematicaClient() as client:
+    async with SemanticaTaskClient() as client:
         # 1. Enqueue type checking
         response = await client.enqueue(
             EnqueueRequest(

@@ -1,6 +1,6 @@
-# Semantica SDK
+# SemanticaTask SDK
 
-Rust client library for [Semantica Task Engine](../../README.md).
+Rust client library for [SemanticaTask Engine](../../README.md).
 
 ## 기능
 
@@ -14,7 +14,7 @@ Rust client library for [Semantica Task Engine](../../README.md).
 
 ```toml
 [dependencies]
-semantica-sdk = "0.1"
+semantica-task-sdk = "0.1"
 tokio = { version = "1", features = ["full"] }
 serde_json = "1"
 ```
@@ -24,13 +24,13 @@ serde_json = "1"
 ### 기본 사용
 
 ```rust
-use semantica_sdk::{SematicaClient, EnqueueRequest};
+use semantica_sdk::{SemanticaTaskClient, EnqueueRequest};
 use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Connect to daemon
-    let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
 
     // 2. Enqueue a job
     let response = client.enqueue(EnqueueRequest {
@@ -68,11 +68,11 @@ cargo run --package semantica-sdk --example simple
 
 ## API
 
-### `SematicaClient`
+### `SemanticaTaskClient`
 
 ```rust
 // Connect to daemon
-let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
 
 // Enqueue a job
 let response = client.enqueue(EnqueueRequest { ... }).await?;
@@ -87,7 +87,7 @@ let response = client.tail_logs("job-123", Some(100)).await?;
 ## 에러 처리
 
 ```rust
-use semantica_sdk::{SematicaClient, SdkError};
+use semantica_sdk::{SemanticaTaskClient, SdkError};
 
 match client.enqueue(request).await {
     Ok(response) => println!("Success: {}", response.job_id),

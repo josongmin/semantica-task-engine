@@ -1,12 +1,12 @@
-# Semantica Python SDK
+# SemanticaTask Python SDK
 
-Python client library for [Semantica Task Engine](../README.md).
+Python client library for [SemanticaTask Engine](../README.md).
 
 ## Installation
 
 ```bash
 # From Git
-pip install git+https://github.com/your-org/semantica-task-engine#subdirectory=python-sdk
+pip install git+https://github.com/<username>/semantica-task-engine#subdirectory=python-sdk
 
 # Local development
 cd python-sdk
@@ -19,11 +19,11 @@ pip install -e .
 
 ```python
 import asyncio
-from semantica import SematicaClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def main():
     # Connect to daemon
-    async with SematicaClient("http://127.0.0.1:9527") as client:
+    async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
         # Enqueue a job
         response = await client.enqueue(
             EnqueueRequest(
@@ -54,10 +54,10 @@ if __name__ == "__main__":
 
 ## API
 
-### `SematicaClient`
+### `SemanticaTaskClient`
 
 ```python
-async with SematicaClient("http://127.0.0.1:9527") as client:
+async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
     # Enqueue
     response = await client.enqueue(EnqueueRequest(...))
     
@@ -71,9 +71,9 @@ async with SematicaClient("http://127.0.0.1:9527") as client:
 ## Error Handling
 
 ```python
-from semantica import SematicaClient, ConnectionError, RpcError
+from semantica import SemanticaTaskClient, ConnectionError, RpcError
 
-async with SematicaClient() as client:
+async with SemanticaTaskClient() as client:
     try:
         response = await client.enqueue(request)
     except ConnectionError as e:

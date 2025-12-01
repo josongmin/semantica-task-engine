@@ -10,26 +10,26 @@ use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use jsonrpsee::rpc_params;
 use std::time::Duration;
 
-/// Semantica Task Engine Client
+/// SemanticaTask Engine Client
 ///
-/// Provides a high-level interface to interact with the Semantica daemon.
+/// Provides a high-level interface to interact with the SemanticaTask daemon.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use semantica_sdk::SematicaClient;
+/// use semantica_task_sdk::SemanticaTaskClient;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+/// let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
 /// # Ok(())
 /// # }
 /// ```
-pub struct SematicaClient {
+pub struct SemanticaTaskClient {
     client: HttpClient,
 }
 
-impl SematicaClient {
-    /// Connect to Semantica daemon
+impl SemanticaTaskClient {
+    /// Connect to SemanticaTask daemon
     ///
     /// # Arguments
     ///
@@ -38,9 +38,9 @@ impl SematicaClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SematicaClient;
+    /// # use semantica_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    /// let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -64,10 +64,10 @@ impl SematicaClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::{SematicaClient, EnqueueRequest};
+    /// # use semantica_task_sdk::{SemanticaTaskClient, EnqueueRequest};
     /// # use serde_json::json;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    /// # let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// let response = client.enqueue(EnqueueRequest {
     ///     job_type: "INDEX_FILE".to_string(),
     ///     queue: "default".to_string(),
@@ -96,9 +96,9 @@ impl SematicaClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SematicaClient;
+    /// # use semantica_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    /// # let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// let response = client.cancel("job-123").await?;
     /// assert!(response.cancelled);
     /// # Ok(())
@@ -124,9 +124,9 @@ impl SematicaClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use semantica_sdk::SematicaClient;
+    /// # use semantica_sdk::SemanticaTaskClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// # let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    /// # let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     /// let response = client.tail_logs("job-123", Some(100)).await?;
     /// for line in response.lines {
     ///     println!("{}", line);

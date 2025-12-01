@@ -1,18 +1,18 @@
-"""Semantica Task Engine - Python SDK"""
+"""SemanticaTask Engine - Python SDK"""
 
-from .client import SematicaClient
+from .client import SemanticaTaskClient
 from .types import EnqueueRequest, EnqueueResponse, CancelResponse, TailLogsResponse
-from .errors import SematicaError, ConnectionError, RpcError
+from .errors import SemanticaTaskError, ConnectionError, RpcError
 
 __version__ = "0.1.0"
 
 __all__ = [
-    "SematicaClient",
+    "SemanticaTaskClient",
     "EnqueueRequest",
     "EnqueueResponse",
     "CancelResponse",
     "TailLogsResponse",
-    "SematicaError",
+    "SemanticaTaskError",
     "ConnectionError",
     "RpcError",
 ]

@@ -1,4 +1,4 @@
-"""Semantica SDK Types"""
+"""SemanticaTask SDK Types"""
 
 from dataclasses import dataclass
 from typing import Any, Optional

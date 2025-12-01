@@ -1,4 +1,4 @@
-# Semantica Task Engine
+# SemanticaTask Engine
 
 AI Native Dev Task Orchestrator - 로컬 환경에서 실행되는 고성능 태스크 오케스트레이터
 

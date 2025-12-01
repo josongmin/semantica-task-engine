@@ -14,17 +14,17 @@
 //!    cargo run --example simple
 //!    ```
 
-use semantica_sdk::{EnqueueRequest, SematicaClient};
+use semantica_task_sdk::{EnqueueRequest, SemanticaTaskClient};
 use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Semantica SDK - Simple Example");
+    println!("SemanticaTask SDK - Simple Example");
     println!("================================\n");
 
     // 1. Connect to daemon
     println!("1. Connecting to daemon...");
-    let client = SematicaClient::connect("http://127.0.0.1:9527").await?;
+    let client = SemanticaTaskClient::connect("http://127.0.0.1:9527").await?;
     println!("   ✓ Connected\n");
 
     // 2. Enqueue a job

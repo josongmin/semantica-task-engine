@@ -1,15 +1,15 @@
-"""Semantica SDK Errors"""
+"""SemanticaTask SDK Errors"""
 
 from typing import Any, Optional
 
 
-class SematicaError(Exception):
-    """Base exception for Semantica SDK"""
+class SemanticaTaskError(Exception):
+    """Base exception for SemanticaTask SDK"""
 
     pass
 
 
-class ConnectionError(SematicaError):
+class ConnectionError(SemanticaTaskError):
     """Connection error"""
 
     def __init__(self, message: str):
@@ -17,7 +17,7 @@ class ConnectionError(SematicaError):
         super().__init__(message)
 
 
-class RpcError(SematicaError):
+class RpcError(SemanticaTaskError):
     """JSON-RPC error"""
 
     def __init__(self, code: int, message: str, data: Optional[Any] = None):

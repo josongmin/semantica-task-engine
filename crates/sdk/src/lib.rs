@@ -32,7 +32,7 @@ mod client;
 mod error;
 mod types;
 
-pub use client::SematicaClient;
+pub use client::SemanticaTaskClient;
 pub use error::{Result, SdkError};
 pub use types::{
     CancelRequest, CancelResponse, EnqueueRequest, EnqueueResponse, TailLogsRequest,

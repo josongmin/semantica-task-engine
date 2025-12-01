@@ -1,9 +1,9 @@
 [package]
-name = "semantica-sdk"
+name = "semantica-task-sdk"
 version = "0.1.0"
 edition = "2021"
-authors = ["Semantica Team"]
-description = "Rust SDK for Semantica Task Engine"
+authors = ["SemanticaTask Team"]
+description = "Rust SDK for SemanticaTask Engine"
 license = "MIT"
 
 [dependencies]

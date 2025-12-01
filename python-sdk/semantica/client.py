@@ -7,11 +7,11 @@ from .errors import ConnectionError, RpcError
 from .types import EnqueueRequest, EnqueueResponse, CancelResponse, TailLogsResponse
 
 
-class SematicaClient:
-    """Semantica Task Engine Client
+class SemanticaTaskClient:
+    """SemanticaTask Engine Client
     
     Example:
-        >>> async with SematicaClient("http://127.0.0.1:9527") as client:
+        >>> async with SemanticaTaskClient("http://127.0.0.1:9527") as client:
         ...     response = await client.enqueue(
         ...         EnqueueRequest(
         ...             job_type="INDEX_FILE",
