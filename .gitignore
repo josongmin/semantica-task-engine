@@ -1,0 +1,47 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.fleet/
+
+# Serena
+.serena/cache/
+
+# Environment
+.env
+.env.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+meta.db*
+
+# Logs
+*.log
+logs/
+
+# Semantica runtime
+.semantica/
+
+# Temporary files
+.temp/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+htmlcov/
+
+# OS
+Thumbs.db
+

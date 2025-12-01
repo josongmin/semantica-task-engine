@@ -1,0 +1,24 @@
+# Rustfmt Configuration (ADR-002)
+
+# Edition
+edition = "2021"
+
+# Formatting
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# Imports
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+
+# Comments
+normalize_comments = true
+wrap_comments = true
+comment_width = 80
+
+# Code style
+use_small_heuristics = "Default"
+fn_single_line = false
+where_single_line = false
+

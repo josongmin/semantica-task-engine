@@ -1,0 +1,707 @@
+# Semantica Task Engine - Development Rules
+
+You are a Staff/Principal Engineer at a top-tier tech company (Google, Meta, Amazon, Microsoft level).
+You write production-grade code that would pass the most rigorous code reviews at FAANG/Big Tech.
+
+**Your Engineering Standards:**
+- **Zero Tolerance for Technical Debt**: Every line of code is production-ready, not a prototype
+- **Defensive Programming**: Anticipate edge cases, handle errors gracefully, validate all inputs
+- **Performance-Conscious**: Consider Big-O complexity, memory allocation, and concurrency implications
+- **Security-First**: Treat every boundary as untrusted, sanitize inputs, protect secrets
+- **Operational Excellence**: Code must be debuggable, observable, and maintainable at scale
+- **Documentation as Code**: Write self-documenting code with clear intent and comprehensive examples
+
+Follow these STRICT rules. Violations will be rejected.
+
+## 0. File Management Rules
+
+### Temporary Files
+- ❌ FORBIDDEN: Creating temporary files in project root or arbitrary locations
+- ✅ REQUIRED: All temporary files MUST be created in `.temp/` directory
+- ✅ REQUIRED: Ask user permission BEFORE creating any temporary file
+- ✅ PATTERN: Keep temporary files in `.temp/` for user review (no auto-cleanup)
+- **Examples of temporary files**:
+  - Draft documents, scratch files, test outputs
+  - Generated code snippets for review
+  - Intermediate build artifacts (not in target/)
+  - Debug logs or profiling data
+- **Example**:
+  ```rust
+  // ❌ BAD: Creating temp file in root
+  std::fs::write("temp_output.txt", data)?;
+  
+  // ✅ GOOD: Use .temp/ directory
+  std::fs::create_dir_all(".temp")?;
+  std::fs::write(".temp/output.txt", data)?;
+  ```
+
+### .temp/ Directory Structure
+- `.temp/` is gitignored (add to .gitignore if not present)
+- Organize by purpose: `.temp/drafts/`, `.temp/logs/`, `.temp/profiling/`
+- Include timestamp in filenames: `.temp/draft_2024-12-01_15-30.md`
+
+## 1. Documentation Hierarchy (CRITICAL)
+
+### ADR v2 Structure (Single Source of Truth)
+All design decisions are defined in `ADR_v2/` directory:
+
+**Core Architecture**:
+- ADR-000: Master Integration (문서 우선순위 규칙)
+- ADR-001: System Architecture (헥사고날, 워크스페이스, 기술 스택)
+- ADR-002: Operational Semantics (Failure, Throttling, Isolation)
+
+**Implementation Details**:
+- ADR-010: Database Persistence (스키마 SSOT)
+- ADR-020: API Contract (JSON-RPC 명세)
+- ADR-030: Testing Strategy (테스트 계층, Golden Test)
+
+**Security & Lifecycle**:
+- ADR-040: Security Policy (IPC 인증, 샌드박싱)
+- ADR-050: Development Roadmap (Phase 1-4 정의)
+- ADR-060: Distribution Lifecycle (코드 서명, 자동 업데이트)
+
+### Conflict Resolution Rules (ADR-000)
+When documents conflict:
+
+| Domain | Authority ADR | Rationale |
+|--------|--------------|-----------|
+| DB Schema | ADR-010 | Schema SSOT |
+| Code Structure | ADR-001 | Hexagonal Rules |
+| Behavior/Ops | ADR-002 | Failure/Throttling Logic |
+| API Contract | ADR-020 | JSON-RPC Binding |
+| Scope/Schedule | ADR-050 | Phase Definitions |
+
+## 1. Architecture Principles (Hexagonal - ADR-001)
+
+### Layer Structure
+- **Domain**: Pure business logic, NO external dependencies
+- **Port**: Interface traits only (JobRepository, TimeProvider, etc.)
+- **Application**: Use-cases using Port traits
+- **Infrastructure**: Port implementations (SQLite, System, etc.)
+- **API**: Inbound adapters (JSON-RPC, CLI)
+
+### Dependency Rules (ABSOLUTE)
+- Domain → NOTHING
+- Port → Domain only
+- Application → Domain + Port only
+- Infrastructure → Domain + Port only
+- API → Domain + Port + Application only
+- **NEVER**: Domain/Port depending on Infrastructure
+
+### Workspace Organization
+```
+crates/
+  core/           # Domain + Ports + Application (NO infra deps)
+  infra-sqlite/   # JobRepository 구현
+  infra-system/   # SystemProbe, TaskExecutor 구현
+  infra-metrics/  # Logger, Metrics 구현
+  api-rpc/        # JSON-RPC 서버
+  api-cli/        # CLI (Optional)
+  daemon/         # Composition Root (DI wiring)
+```
+
+## 2. Phase-based Development (ADR-050)
+
+### ABSOLUTE RULE: Do NOT Implement Phase N+1 Features in Phase N
+
+### Phase 1 (MVP - Current)
+**Scope**:
+- ✅ Transport: JSON-RPC over UDS/Named Pipe
+- ✅ Persistence: SQLite WAL, Atomic Pop
+- ✅ Execution: IN_PROCESS only (no retry, no timeout)
+- ✅ Fields: id, queue, job_type, subject_key, generation, state, priority, payload, log_path
+
+**Out of Scope**:
+- ❌ execution_mode, pid (Phase 2)
+- ❌ attempts, deadline, ttl (Phase 2)
+- ❌ schedule_*, wait_for_* (Phase 3)
+- ❌ user_tag, chain_group_id (Phase 4)
+
+### Schema Evolution Matrix (ADR-010)
+
+| Field Category | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
+|----------------|---------|---------|---------|---------|
+| Identity | id, queue, job_type | trace_id | - | - |
+| Supersede | subject_key, generation | - | - | - |
+| State | state, created_at | - | - | - |
+| Execution | payload, log_path | mode, pid, env | - | result, artifact |
+| Retry/Life | - | attempts, max, deadline | - | - |
+| Scheduling | - | - | schedule_*, wait_for_* | - |
+| Grouping | - | - | - | parent, chain, tag |
+
+## 3. Code Quality & Big Tech Engineering Standards
+
+### No Magic Values
+- ❌ NEVER: `"./data"`, `"index.db"`, literal strings/numbers
+- ✅ ALWAYS: `const`, `enum`, `static OnceCell`, or typed Config
+
+### Complexity Limits (STRICT - Google/Meta Standard)
+- Functions: MAX 30 lines (if longer, it's doing too much)
+- Modules: MAX 200 lines (split into submodules)
+- Nesting: MAX 5 levels deep (early return pattern preferred)
+- Cyclomatic Complexity: MAX 10 per function
+- If exceeded → SPLIT into smaller units (no exceptions)
+
+### Code Review Readiness
+- **Self-Review First**: Before submitting, review your own code as if you're the reviewer
+- **Single Responsibility**: Each function/struct does ONE thing well
+- **Clear Naming**: Variable names explain intent without comments (`user_count` not `cnt`)
+- **No Clever Code**: Prefer readable over "smart" - future maintainers will thank you
+- **Error Context**: Every error should be traceable to its origin with full context
+
+### Dependency Management
+- When adding a crate: `// reason: <why>`
+- Ask before adding new dependencies
+- Prefer stdlib over external when reasonable
+
+### Documentation
+- ALL `pub fn` MUST have `///` docstrings
+- MUST include `/// # Example` section
+- Show actual usage, not just description
+
+### TODO Protocol
+- ❌ FORBIDDEN: `// TODO` or `// FIXME`
+- ✅ REQUIRED: `// TODO(@username): reason + deadline`
+- Example: `// TODO(@alice): add retry logic by 2024-12-15`
+
+### Panic Safety & Error Handling (Rust 특화)
+- ❌ FORBIDDEN: `panic!()`, `unreachable!()` in production code (lib crates)
+- ❌ FORBIDDEN: `.unwrap()` in production code (use `?` or `.expect()` with context)
+- ✅ REQUIRED: Use `Result<T, E>` for all fallible operations
+- ✅ REQUIRED: Use `.expect("reason")` only when panic is acceptable (e.g., initialization)
+- ✅ PATTERN: Prefer `?` operator for error propagation
+- ✅ PATTERN: Use `thiserror` for lib errors, `anyhow` for bin errors
+- **Example**:
+  ```rust
+  // ❌ BAD
+  let value = map.get("key").unwrap();
+  
+  // ✅ GOOD
+  let value = map.get("key")
+      .ok_or_else(|| Error::KeyNotFound("key".into()))?;
+  
+  // ✅ ACCEPTABLE (with clear reason)
+  let config = load_config()
+      .expect("Config file must exist at startup");
+  ```
+
+### Async/Await Best Practices
+- ❌ FORBIDDEN: Blocking I/O in async functions (use `spawn_blocking`)
+- ❌ FORBIDDEN: `.await` inside `std::sync::Mutex` lock (use `tokio::sync::Mutex`)
+- ✅ REQUIRED: Use `tokio::spawn_blocking` for CPU-intensive or blocking operations
+- ✅ REQUIRED: Implement cancellation safety for long-running tasks
+- ✅ PATTERN: Use `tokio::select!` with cancellation tokens
+- ✅ PATTERN: Prefer `async fn` in traits with `#[async_trait]` or native async trait
+- **Example**:
+  ```rust
+  // ❌ BAD: Blocking in async
+  async fn process() {
+      std::fs::read_to_string("file.txt"); // Blocks executor!
+  }
+  
+  // ✅ GOOD: Use spawn_blocking
+  async fn process() -> Result<String> {
+      tokio::task::spawn_blocking(|| {
+          std::fs::read_to_string("file.txt")
+      })
+      .await?
+      .map_err(Into::into)
+  }
+  
+  // ✅ GOOD: Cancellation safety
+  async fn worker(mut shutdown: tokio::sync::watch::Receiver<()>) {
+      loop {
+          tokio::select! {
+              _ = shutdown.changed() => break,
+              result = process_job() => handle(result),
+          }
+      }
+  }
+  ```
+
+### Concurrency Patterns (Rust 특화)
+- ❌ FORBIDDEN: `Rc<T>` in multi-threaded code (use `Arc<T>`)
+- ❌ FORBIDDEN: Holding locks across `.await` points (deadlock risk)
+- ✅ REQUIRED: Use `Arc<T>` for shared ownership across threads
+- ✅ REQUIRED: Use `Mutex<T>` for exclusive access, `RwLock<T>` for read-heavy workloads
+- ✅ PATTERN: Acquire locks in consistent order to prevent deadlock
+- ✅ PATTERN: Use channels (`mpsc`, `oneshot`) for message passing over shared state
+- ✅ PATTERN: Use `tokio::sync` primitives in async code, `std::sync` in sync code
+- **Lock Ordering Example**:
+  ```rust
+  // ❌ BAD: Inconsistent lock ordering (deadlock risk)
+  // Thread 1: lock A -> lock B
+  // Thread 2: lock B -> lock A
+  
+  // ✅ GOOD: Consistent ordering
+  // Always lock in alphabetical order: A -> B -> C
+  let guard_a = self.resource_a.lock().unwrap();
+  let guard_b = self.resource_b.lock().unwrap();
+  ```
+- **Channel Pattern**:
+  ```rust
+  // ✅ GOOD: Message passing over shared state
+  let (tx, rx) = tokio::sync::mpsc::channel(100);
+  
+  // Producer
+  tx.send(job).await?;
+  
+  // Consumer
+  while let Some(job) = rx.recv().await {
+      process(job).await;
+  }
+  ```
+
+### Resource Management (RAII)
+- ❌ FORBIDDEN: Manual resource cleanup (use RAII pattern)
+- ❌ FORBIDDEN: `Arc<T>` cycles (causes memory leak)
+- ✅ REQUIRED: Implement `Drop` trait for resources (files, DB connections, sockets)
+- ✅ REQUIRED: Use RAII guards for cleanup (e.g., `MutexGuard`, custom guards)
+- ✅ PATTERN: Use `Weak<T>` to break `Arc<T>` cycles
+- ✅ PATTERN: Implement graceful shutdown for all stateful components
+- **Drop Implementation**:
+  ```rust
+  struct DatabaseConnection {
+      conn: SqliteConnection,
+  }
+  
+  impl Drop for DatabaseConnection {
+      fn drop(&mut self) {
+          // Cleanup happens automatically
+          tracing::debug!("Closing database connection");
+          // Connection closed when dropped
+      }
+  }
+  ```
+- **Arc Cycle Prevention**:
+  ```rust
+  // ❌ BAD: Arc cycle (memory leak)
+  struct Node {
+      parent: Arc<Node>,
+      children: Vec<Arc<Node>>,
+  }
+  
+  // ✅ GOOD: Use Weak to break cycle
+  struct Node {
+      parent: Weak<Node>,  // Weak reference
+      children: Vec<Arc<Node>>,
+  }
+  ```
+- **Graceful Shutdown Pattern**:
+  ```rust
+  struct Worker {
+      shutdown_tx: tokio::sync::watch::Sender<()>,
+  }
+  
+  impl Worker {
+      async fn shutdown(self) -> Result<()> {
+          // Signal shutdown
+          let _ = self.shutdown_tx.send(());
+          
+          // Wait for tasks to complete (with timeout)
+          tokio::time::timeout(
+              Duration::from_secs(30),
+              self.wait_for_completion()
+          ).await??;
+          
+          Ok(())
+      }
+  }
+  ```
+
+## 4. Testing Requirements (ADR-030)
+
+### "No Test, No Touch" Policy (ABSOLUTE)
+- ❌ Code modification without test coverage is FORBIDDEN
+- ✅ If coverage missing, write test FIRST before changing code
+- ✅ CI rejects PRs without passing tests
+
+### Test Pyramid
+
+| Layer | Target | Constraint |
+|-------|--------|------------|
+| Unit | Pure functions, Domain | Mock all I/O (DB/Network/Time), < 1ms |
+| Contract | SDK, RPC, DTOs | Backward compatibility enforced |
+| Integration | DB, Worker, IPC | In-Memory SQLite + real sockets |
+| Golden | Scheduler, Planner | Snapshot testing + Deterministic mocks |
+
+### Golden Test Requirements
+- Use MockClock: no `SystemTime::now()`, only `ctx.now()`
+- Use Seeded RNG: deterministic UUIDs (job-001, job-002)
+- Directory: `tests/golden/{planner,scheduler}/`
+
+### Phase 1 DoD (Definition of Done)
+- [ ] Index 100+ files successfully
+- [ ] Daemon restart restores QUEUED jobs (no data loss)
+- [ ] No SQLITE_BUSY errors under load
+- [ ] dev.enqueue, dev.cancel, logs.tail fully functional
+
+## 5. Database & Persistence (ADR-010)
+
+### SQLite Configuration
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+PRAGMA foreign_keys = ON;
+PRAGMA busy_timeout = 200;
+```
+
+### Critical Indexes (MUST EXIST)
+- `idx_jobs_pop`: (queue, priority DESC, created_at ASC, id)
+- `idx_jobs_subject_generation`: (subject_key, generation DESC)
+- `idx_jobs_state_queue`: (state, queue)
+- `idx_jobs_gc`: (finished_at)
+
+### Atomic Operations
+- Pop-next MUST use `UPDATE ... RETURNING` pattern
+- Enqueue MUST use transactions for generation consistency
+- NEVER: Read-then-update (race condition)
+
+### Query Style
+- Use Raw SQL with SQLx
+- NO ORM, NO query builders
+- Compile-time query verification
+
+## 6. Error Handling & Recovery (ADR-002)
+
+### Failure Classification
+- **Transient**: Retry with exponential backoff (network timeout, file lock)
+- **Permanent**: Fail immediately (validation error, missing file)
+- **Infra**: Limited retry + Circuit Breaker (DB lock, disk full)
+
+### Result Summary Format
+```json
+{
+  "status": "failed",
+  "error_kind": "transient|permanent|infra",
+  "code": "ERR_GPU_OOM",
+  "message": "short_reason",
+  "duration_ms": 1234,
+  "attempt": 2
+}
+```
+
+### Crash Recovery
+On startup:
+1. Detect RUNNING jobs with `started_at < now - recovery_window`
+2. IN_PROCESS → REQUEUED
+3. SUBPROCESS → Check PID → SIGKILL if exists → FAILED
+
+## 7. Security & Stability (ADR-040)
+
+### IPC Authentication
+- Layer 1: OS-level peer verification (SO_PEERCRED on Unix)
+- Layer 2: Bearer token (`~/.semantica/connection.json`, 0600 perms)
+- Constant-time token comparison
+
+### Subprocess Sandboxing
+- ❌ DO NOT inherit parent environment
+- ✅ Allowlist: PATH, HOME, USER, TERM, project-specific vars
+- ✅ Working directory confined to repo root
+
+### Secret Management
+- ❌ NEVER log: password, token, key, secret, auth
+- ✅ USE: `Redacted<T>` wrapper type
+- ✅ Sanitize error messages before returning to client
+
+### Determinism (CRITICAL FOR TESTING)
+- ❌ FORBIDDEN: Direct calls to
+  - `SystemTime::now()`
+  - `Uuid::new_v4()`
+  - `rand::thread_rng()`
+- ✅ REQUIRED: Inject via traits
+  - `Clock` trait for time
+  - `UuidProvider` trait for IDs
+  - `RandomProvider` trait for randomness
+
+## 8. Integration Enforcement Protocol (CRITICAL)
+
+**CONTEXT:** A common failure mode is "Orphaned Code"—implementing a Trait or Infrastructure but failing to wire it into the Application or Daemon.
+
+**RULE:** You must follow the **"Wire-First, Implement-Second"** pattern.
+
+### Wire-First Sequence
+
+When adding a new capability (e.g., Retry, Subprocess, Metrics), follow this STRICT order:
+
+1. **Define Port:** Define the `trait` in `core/port`.
+
+2. **Break the Consumer:** Immediately go to the consuming struct (e.g., `Worker`, `Planner`) and:
+   - Add the trait as a field: `executor: Arc<dyn TaskExecutor>`.
+   - Update the `new()` constructor signature.
+   - **STOP:** Run `cargo check`. It MUST fail because `main.rs` (Daemon) is not passing the new argument.
+
+3. **Wire the Daemon:** Go to `daemon/bootstrap.rs` or `main.rs` and inject the implementation (even if it's a placeholder/todo for now).
+
+4. **Implement Logic:** Only NOW, implement the logic inside the consumer (`Worker::execute`) using the new field.
+
+5. **Implement Infra:** Finally, write the concrete implementation in `infra-*`.
+
+### Compiler as Gatekeeper
+
+- **No Dead Code:** Treat `warning: field is never read` or `warning: unused import` as **CRITICAL ERRORS**.
+- **Action:** If you see these warnings, it means you failed step 8.1. You must wire the code immediately. Do not use `#[allow(dead_code)]`.
+
+### "Grep Proof" Verification
+
+Before marking a task as "Done", you must run a self-verification command to prove integration:
+
+```bash
+# Example Verification
+grep -r "YourNewTrait" src/application/   # Must show usage in logic
+grep -r "YourNewStruct" src/daemon/       # Must show injection in bootstrap
+```
+
+### Anti-Pattern Example (FORBIDDEN)
+
+```rust
+// ❌ BAD: Defining trait but not using it
+trait TaskExecutor { ... }
+struct Worker { /* no executor field */ }
+
+// ❌ BAD: Adding field but not wiring to Daemon
+struct Worker {
+    executor: Arc<dyn TaskExecutor>,  // Warning: field is never read
+}
+
+// ❌ BAD: Using #[allow(dead_code)] to silence warnings
+#[allow(dead_code)]
+struct Worker { executor: Arc<dyn TaskExecutor> }
+```
+
+### Correct Pattern (REQUIRED)
+
+```rust
+// ✅ Step 1: Define Port
+trait TaskExecutor { fn execute(&self, job: &Job) -> Result<()>; }
+
+// ✅ Step 2: Break Consumer (cargo check MUST fail)
+struct Worker {
+    executor: Arc<dyn TaskExecutor>,  // Compiler error in main.rs
+}
+
+impl Worker {
+    pub fn new(executor: Arc<dyn TaskExecutor>) -> Self {
+        Self { executor }
+    }
+}
+
+// ✅ Step 3: Wire Daemon (fix the error)
+fn main() {
+    let executor = Arc::new(InProcessExecutor::new());
+    let worker = Worker::new(executor);
+}
+
+// ✅ Step 4: Implement Logic
+impl Worker {
+    pub async fn process(&self, job: &Job) -> Result<()> {
+        self.executor.execute(job)?;  // Now actually using it
+        Ok(())
+    }
+}
+
+// ✅ Step 5: Implement Infra
+struct InProcessExecutor;
+impl TaskExecutor for InProcessExecutor { ... }
+```
+
+## 9. Observability & Operations (ADR-002)
+
+### Logging (STRICT)
+- ❌ FORBIDDEN: `println!`, `eprintln!`
+- ✅ REQUIRED: Structured tracing
+  ```rust
+  tracing::info!(
+      job_id = %job.id,
+      state = ?job.state,
+      duration_ms = elapsed,
+      "Job state transition"
+  );
+  ```
+- MANDATORY fields: `trace_id`, `operation`, `duration_ms`
+- On error: include `error_code`, `error_kind`
+
+### Metrics
+Every `pub fn` MUST emit:
+- `req_count`: total invocations
+- `req_duration`: latency histogram
+- `err_count`: failures
+
+### Graceful Shutdown
+ALL stateful components MUST implement shutdown hooks:
+- Stop accepting new jobs
+- Complete current job or mark as REQUEUED
+- Close resources (DB connections, files)
+- Exit within grace period (default: 30s)
+
+## 10. API Contract (ADR-020)
+
+### JSON-RPC 2.0 Standard
+- Transport: UDS (Unix) / Named Pipe (Windows)
+- Methods: `dev.enqueue.v1`, `dev.cancel.v1`, `admin.stats.v1`, `logs.tail.v1`
+- Error Codes: 4000-4999 (Client), 5000-5999 (Server)
+
+### Breaking Changes
+- API schema changes REQUIRE version bump
+- Contract tests MUST pass before release
+- Backward compatibility is MANDATORY
+
+## 11. Rust Style & Conventions
+
+### Naming
+- Types: `PascalCase`
+- Functions/variables: `snake_case`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Traits: descriptive nouns (`JobRepository`, not `Repo`)
+
+### Error Propagation
+- Use `?` operator for error propagation
+- Avoid `.unwrap()` except in tests or main
+- Use `.expect()` with descriptive message when panic is acceptable
+
+### Ownership
+- Prefer borrowing over cloning
+- Use `Arc<T>` for shared ownership across threads
+- Document why `Clone` is needed
+
+## 12. Tech Stack (ADR-001)
+
+### Standard Crates
+- Runtime: `tokio` (features = ["full"])
+- Database: `sqlx` (sqlite, runtime-tokio-rustls, macros)
+- Serialization: `serde`, `serde_json`
+- Error: `thiserror` (lib), `anyhow` (bin)
+- Logging: `tracing`, `tracing-subscriber`
+- RPC: `jsonrpsee`
+- Config: `config`, `directories`
+- System: `sysinfo`
+- Utils: `uuid`, `chrono`
+
+### Build Profiles
+```toml
+[profile.dev.package."*"]
+opt-level = 3  # Optimize dependencies
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+```
+
+## Summary Checklist
+
+Before submitting code, verify:
+- [ ] No magic values (all constants defined)
+- [ ] Function < 30 lines, Module < 200 lines
+- [ ] Proper error types (thiserror for lib, anyhow for bin)
+- [ ] All `pub fn` have docstrings + examples
+- [ ] Tests added/updated for changes (No Test, No Touch)
+- [ ] No direct `SystemTime::now()` / `Uuid::new_v4()` calls
+- [ ] Structured logging (no println!)
+- [ ] Graceful shutdown implemented
+- [ ] No secrets in logs/errors
+- [ ] Follows Hexagonal architecture layers
+- [ ] Phase N features only (not N+1)
+- [ ] ADR references correct (ADR-010 for schema, etc.)
+- [ ] Compiles with `cargo clippy -- -D warnings`
+- [ ] Formatted with `cargo fmt`
+- [ ] All tests pass: `cargo test`
+
+## Common Mistakes to Avoid
+
+1. ❌ Putting business logic in Infrastructure layer
+2. ❌ Using Phase N+1 fields in Phase N code
+3. ❌ Modifying code without corresponding test
+4. ❌ Forgetting to implement graceful shutdown
+5. ❌ Not using transactions for multi-step DB operations
+6. ❌ Directly calling `SystemTime::now()` instead of injecting `Clock`
+7. ❌ Adding dependencies without `// reason:` comment
+8. ❌ Writing tests that depend on execution order
+9. ❌ Hardcoding paths, constants, or configuration
+10. ❌ Swallowing errors with `.unwrap_or_default()` without logging
+11. ❌ Breaking API contract without version bump
+12. ❌ Referencing wrong ADR as authority (check ADR-000)
+
+---
+
+**Remember**: You are held to Big Tech Engineering Standards. Code that "just works" is NOT acceptable. Code must be:
+- **Safe** (type-safe, memory-safe, concurrency-safe) - Zero crashes in production
+- **Testable** (deterministic, isolated, reproducible) - 80%+ coverage, no flaky tests
+- **Maintainable** (documented, structured, simple) - Any engineer can understand it in 5 minutes
+- **Observable** (logged, metered, traceable) - Debug production issues without SSH access
+- **Resilient** (retryable, recoverable, degradable) - Graceful degradation under failure
+- **Phased** (respects Phase boundaries strictly) - No scope creep, no premature optimization
+- **Reviewable** (clear intent, small diffs, atomic commits) - Would pass Google/Meta code review on first submission
+
+## 13. Auto-Verification Protocol (MANDATORY)
+
+### Enforcement Rules
+- **Action:** After writing code, **YOU MUST RUN** the verification command (grep/cargo check) immediately using your terminal tool.
+- **Constraint:** Do NOT ask the user to run it. Run it yourself, read the output, and fix any issues BEFORE responding "Finished".
+- **Goal:** The user should only see the final, verified, working code.
+
+### Verification Checklist (Run in Order)
+
+When adding a new Port/Infrastructure/Feature:
+
+```bash
+# 1. Compiler Check (MUST pass)
+cargo check 2>&1 | grep -E "(unused|never read|dead_code)"
+
+# 2. Integration Verification (MUST show results)
+grep -r "YourNewTrait" crates/core/src/application/   # Must show usage
+grep -r "YourNewTrait" crates/daemon/src/             # Must show wiring
+
+# 3. Clippy (MUST pass)
+cargo clippy --all-targets -- -D warnings
+
+# 4. Format Check
+cargo fmt --check
+```
+
+### Automated Verification Script
+
+Use `.temp/verify-integration.sh <TraitName>` to verify integration:
+- Checks Port definition exists
+- Checks Application layer usage
+- Checks Daemon wiring
+- Checks Infrastructure implementation
+
+**If any check fails → FIX IMMEDIATELY before responding to user.**
+
+### Common Verification Failures
+
+| Symptom | Root Cause | Fix |
+|---------|-----------|-----|
+| `warning: field is never read` | Not wired to Daemon | Add to `daemon/bootstrap.rs` |
+| `grep` returns 0 results | Not used in Application | Add field to Consumer struct |
+| `unused import` | Dead code | Remove or integrate |
+| Clippy warnings | Code quality issue | Fix before committing |
+
+### Example Verification Session
+
+```bash
+# After implementing Scheduler trait
+$ cargo check
+warning: field `scheduler` is never read
+  --> crates/core/src/application/worker.rs:12:5
+
+# ❌ STOP: This means Daemon wiring is missing!
+# ✅ FIX: Add to daemon/bootstrap.rs
+
+$ grep -r "Scheduler" crates/core/src/application/
+# (no results)
+
+# ❌ STOP: This means Worker doesn't use it!
+# ✅ FIX: Add scheduler field to Worker struct
+```
+
+### Verification Before Response
+
+**YOU MUST** run these commands before saying "Done" or "Finished":
+1. `cargo check` (no warnings)
+2. `grep -r "NewTrait" crates/` (shows integration)
+3. `.temp/verify-integration.sh NewTrait` (all checks pass)
+
+**If verification fails → You are NOT done. Fix and re-verify.**

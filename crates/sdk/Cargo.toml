@@ -1,0 +1,29 @@
+[package]
+name = "semantica-sdk"
+version = "0.1.0"
+edition = "2021"
+authors = ["Semantica Team"]
+description = "Rust SDK for Semantica Task Engine"
+license = "MIT"
+
+[dependencies]
+# JSON-RPC Client
+jsonrpsee = { workspace = true, features = ["client"] }
+
+# Async
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Utils
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+

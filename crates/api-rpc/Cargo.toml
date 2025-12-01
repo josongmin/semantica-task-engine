@@ -1,0 +1,24 @@
+[package]
+name = "semantica-api-rpc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+semantica-core = { path = "../core" }
+
+# JSON-RPC Server
+jsonrpsee = { version = "0.24", features = ["server"] }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error Handling
+thiserror = "2.0"
+
+# Logging
+tracing = "0.1"
+shellexpand = "3.1.1"

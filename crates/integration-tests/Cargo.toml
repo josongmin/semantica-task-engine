@@ -1,0 +1,32 @@
+[package]
+name = "semantica-integration-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+semantica-core = { path = "../core" }
+semantica-infra-sqlite = { path = "../infra-sqlite" }
+semantica-infra-system = { path = "../infra-system" }
+
+tokio = { workspace = true }
+serde_json = { workspace = true }
+async-trait.workspace = true
+sqlx = { workspace = true }
+chrono = { workspace = true }
+
+[[test]]
+name = "phase1_dod"
+path = "tests/phase1_dod.rs"
+
+[[test]]
+name = "phase2_dod"
+path = "tests/phase2_dod.rs"
+
+[[test]]
+name = "phase3_dod"
+path = "tests/phase3_dod.rs"
+
+[[test]]
+name = "phase3_edge_cases"
+path = "tests/phase3_edge_cases.rs"

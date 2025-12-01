@@ -1,0 +1,58 @@
+# Semantica Task Engine - Docker Compose
+# Phase 4: Local development and production deployment
+
+version: '3.8'
+
+services:
+  semantica:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: semantica-daemon
+    restart: unless-stopped
+    ports:
+      - "9527:9527"
+    volumes:
+      - semantica-data:/var/lib/semantica
+      - ./logs:/var/log/semantica:rw
+    environment:
+      - SEMANTICA_DB_PATH=/var/lib/semantica/meta.db
+      - SEMANTICA_RPC_PORT=9527
+      - SEMANTICA_LOG_FORMAT=json
+      - RUST_LOG=semantica=info,sqlx=warn
+      # OpenTelemetry (optional)
+      # - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      # - OTEL_SERVICE_NAME=semantica-prod
+    networks:
+      - semantica-net
+    healthcheck:
+      test: ["CMD", "semantica-cli", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Jaeger for tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: semantica-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - semantica-net
+    profiles:
+      - observability
+
+volumes:
+  semantica-data:
+    driver: local
+
+networks:
+  semantica-net:
+    driver: bridge
+

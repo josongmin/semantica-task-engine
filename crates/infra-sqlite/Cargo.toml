@@ -1,0 +1,27 @@
+[package]
+name = "semantica-infra-sqlite"
+version = "0.1.0"
+edition = "2021"
+authors = ["Semantica Team"]
+description = "SQLite implementation of JobRepository for Semantica Task Engine"
+
+[dependencies]
+# Core dependency (ONLY depends on core)
+semantica-core = { path = "../core" }
+
+# Database
+sqlx = { workspace = true }
+
+# Serialization (for JSON columns)
+serde_json = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+

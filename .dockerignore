@@ -1,0 +1,43 @@
+# Semantica Task Engine - Docker ignore
+
+# Build artifacts
+target/
+*.profraw
+*.profdata
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+.temp/
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# Database (build-time)
+*.db
+*.db-shm
+*.db-wal
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+docs/
+ADR_v2/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Tests (not needed in runtime)
+tests/
+crates/integration-tests/
+
