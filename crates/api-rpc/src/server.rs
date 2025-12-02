@@ -79,7 +79,11 @@ impl RpcServer {
         );
 
         // Build server with localhost-only binding
+        // Security: Limit request body size to prevent memory exhaustion (ADR-040)
+        const MAX_REQUEST_SIZE: u32 = 11_000_000; // 11MB (slightly larger than 10MB payload limit)
+        
         let server = Server::builder()
+            .max_request_body_size(MAX_REQUEST_SIZE)
             .build(&addr)
             .await
             .map_err(|e| format!("Failed to build server on {}: {}", addr, e))?;

@@ -207,11 +207,13 @@ impl JobRepository for SqliteJobRepository {
 
     async fn update_state(&self, id: &JobId, state: JobState, finished_at: Option<i64>) -> Result<()> {
         // Optimization: Update only state and finished_at (reduces WAL writes)
-        sqlx::query(
+        // Security: Conditional update to prevent race conditions (e.g., cancel after completion)
+        let result = sqlx::query(
             r#"
             UPDATE jobs
             SET state = ?, finished_at = ?
             WHERE id = ?
+              AND state NOT IN ('COMPLETED', 'FAILED', 'CANCELLED', 'SUPERSEDED')
             "#,
         )
         .bind(state.to_string())
@@ -221,7 +223,26 @@ impl JobRepository for SqliteJobRepository {
         .await
         .map_err(map_sqlx_error)?;
 
-        Ok(())
+        // Check if row was actually updated
+        if result.rows_affected() == 0 {
+            // Job might not exist or already in terminal state
+            // Verify existence
+            let exists: Option<String> = sqlx::query_scalar("SELECT state FROM jobs WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(map_sqlx_error)?;
+
+            match exists {
+                None => Err(AppError::NotFound(format!("Job {} not found", id))),
+                Some(current_state) => Err(AppError::InvalidState(format!(
+                    "Cannot update job {} from {} to {}",
+                    id, current_state, state
+                ))),
+            }
+        } else {
+            Ok(())
+        }
     }
 
     async fn increment_attempts(&self, id: &JobId) -> Result<()> {

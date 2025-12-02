@@ -120,15 +120,10 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
         )));
     }
 
-    // Payload size validation (prevent memory exhaustion)
-    let payload_str = req.payload.to_string();
-    const MAX_PAYLOAD_SIZE: usize = 10_000_000; // 10MB
-    if payload_str.len() > MAX_PAYLOAD_SIZE {
-        return Err(AppError::Validation(format!(
-            "Payload too large (max 10MB, got {} bytes)",
-            payload_str.len()
-        )));
-    }
+    // Payload size validation (lightweight check)
+    // Note: Heavy validation done at RPC layer (max_request_body_size)
+    // This is a secondary check for depth/complexity
+    validate_payload_complexity(&req.payload)?;
 
     // Priority validation
     const MIN_PRIORITY: i32 = -100;
@@ -141,4 +136,41 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Validate payload complexity (depth and structure)
+///
+/// Prevents deeply nested JSON that could cause stack overflow
+/// during processing or serialization.
+fn validate_payload_complexity(value: &serde_json::Value) -> Result<()> {
+    use crate::error::AppError;
+    
+    const MAX_DEPTH: usize = 32;
+    
+    fn check_depth(value: &serde_json::Value, current_depth: usize) -> Result<()> {
+        if current_depth > MAX_DEPTH {
+            return Err(AppError::Validation(format!(
+                "Payload too deeply nested (max depth: {}, exceeded)",
+                MAX_DEPTH
+            )));
+        }
+        
+        match value {
+            serde_json::Value::Array(arr) => {
+                for item in arr {
+                    check_depth(item, current_depth + 1)?;
+                }
+            }
+            serde_json::Value::Object(obj) => {
+                for (_, val) in obj {
+                    check_depth(val, current_depth + 1)?;
+                }
+            }
+            _ => {}
+        }
+        
+        Ok(())
+    }
+    
+    check_depth(value, 0)
 }

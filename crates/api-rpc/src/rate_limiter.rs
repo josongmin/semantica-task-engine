@@ -1,21 +1,25 @@
-//! Simple Rate Limiter (Token Bucket Algorithm)
+//! Rate Limiter (Token Bucket Algorithm)
 //!
 //! Prevents DoS attacks by limiting requests per second.
+//! Uses atomic operations to avoid lock contention under high load.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::Mutex;
 
-/// Rate limiter using token bucket algorithm
+/// Rate limiter using token bucket algorithm with atomic operations
 pub struct RateLimiter {
-    tokens: Arc<Mutex<TokenBucket>>,
+    state: Arc<AtomicState>,
     max_tokens: u32,
     refill_rate: u32, // tokens per second
 }
 
-struct TokenBucket {
-    tokens: f64,
-    last_refill: Instant,
+struct AtomicState {
+    // Pack tokens (u32) and last_refill_ms (u32) into u64
+    // Upper 32 bits: tokens * 1000 (fixed-point)
+    // Lower 32 bits: last_refill timestamp (milliseconds since creation)
+    packed: AtomicU64,
+    creation_time: Instant,
 }
 
 impl RateLimiter {
@@ -29,11 +33,12 @@ impl RateLimiter {
     /// Allow 100 requests/sec with burst of 200:
     /// `RateLimiter::new(200, 100)`
     pub fn new(max_tokens: u32, refill_rate: u32) -> Self {
+        let tokens_fixed = (max_tokens as u64) << 32;
         Self {
-            tokens: Arc::new(Mutex::new(TokenBucket {
-                tokens: max_tokens as f64,
-                last_refill: Instant::now(),
-            })),
+            state: Arc::new(AtomicState {
+                packed: AtomicU64::new(tokens_fixed),
+                creation_time: Instant::now(),
+            }),
             max_tokens,
             refill_rate,
         }
@@ -42,31 +47,61 @@ impl RateLimiter {
     /// Check if request is allowed (consumes 1 token)
     ///
     /// Returns true if allowed, false if rate limited
+    ///
+    /// Uses atomic CAS loop to avoid lock contention
     pub async fn check(&self) -> bool {
-        let mut bucket = self.tokens.lock().await;
+        // CAS loop to update tokens atomically
+        loop {
+            let packed = self.state.packed.load(Ordering::Acquire);
+            let tokens = (packed >> 32) as u32;
+            let last_refill_ms = (packed & 0xFFFFFFFF) as u32;
 
-        // Refill tokens based on elapsed time
-        let now = Instant::now();
-        let elapsed = now.duration_since(bucket.last_refill).as_secs_f64();
-        let tokens_to_add = elapsed * self.refill_rate as f64;
+            // Calculate elapsed time
+            let now = Instant::now();
+            let elapsed_ms = now
+                .duration_since(self.state.creation_time)
+                .as_millis() as u32;
+            let delta_ms = elapsed_ms.saturating_sub(last_refill_ms);
 
-        bucket.tokens = (bucket.tokens + tokens_to_add).min(self.max_tokens as f64);
-        bucket.last_refill = now;
+            // Refill tokens
+            let tokens_to_add = (delta_ms as u64 * self.refill_rate as u64) / 1000;
+            let new_tokens = ((tokens as u64 + tokens_to_add).min(self.max_tokens as u64)) as u32;
 
-        // Try to consume 1 token
-        if bucket.tokens >= 1.0 {
-            bucket.tokens -= 1.0;
-            true
-        } else {
-            false
+            // Try to consume 1 token
+            if new_tokens >= 1 {
+                let consumed_tokens = new_tokens - 1;
+                let new_packed = ((consumed_tokens as u64) << 32) | (elapsed_ms as u64);
+
+                // CAS: update if no other thread modified it
+                match self.state.packed.compare_exchange(
+                    packed,
+                    new_packed,
+                    Ordering::Release,
+                    Ordering::Acquire,
+                ) {
+                    Ok(_) => return true,
+                    Err(_) => continue, // Retry
+                }
+            } else {
+                // Not enough tokens, but still update timestamp
+                let new_packed = ((new_tokens as u64) << 32) | (elapsed_ms as u64);
+                let _ = self.state.packed.compare_exchange(
+                    packed,
+                    new_packed,
+                    Ordering::Release,
+                    Ordering::Acquire,
+                );
+                return false;
+            }
         }
     }
 
     /// Get remaining tokens (for monitoring)
     #[allow(dead_code)] // Used for metrics in Phase 4
     pub async fn remaining(&self) -> f64 {
-        let bucket = self.tokens.lock().await;
-        bucket.tokens
+        let packed = self.state.packed.load(Ordering::Acquire);
+        let tokens = (packed >> 32) as u32;
+        tokens as f64
     }
 }
 
