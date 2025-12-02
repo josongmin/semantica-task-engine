@@ -95,7 +95,19 @@ impl Scheduler {
     /// - Plugged into AC power
     /// - Battery >= 80%
     /// - No battery found (desktop)
+    ///
+    /// Uses spawn_blocking to avoid blocking the async executor
     async fn is_charging(&self) -> bool {
+        // Use spawn_blocking to prevent blocking the tokio runtime
+        tokio::task::spawn_blocking(|| {
+            Self::is_charging_blocking()
+        })
+        .await
+        .unwrap_or(false) // If spawn fails, assume not charging
+    }
+
+    /// Blocking implementation of charging check
+    fn is_charging_blocking() -> bool {
         #[cfg(target_os = "macos")]
         {
             use std::process::Command;

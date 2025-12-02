@@ -155,7 +155,10 @@ impl Worker {
 
         // Execute job with panic isolation (ADR-002: Worker panic must not kill daemon)
         // Using tokio::task::spawn to isolate panics
-        let job_for_exec = job.clone();
+        // 
+        // Optimization: Use Arc to avoid cloning large payloads
+        let job_arc = Arc::new(job);
+        let job_for_exec = Arc::clone(&job_arc);
         let task_executor = Arc::clone(&self.task_executor);
 
         let handle = tokio::task::spawn(async move {
@@ -165,6 +168,10 @@ impl Worker {
 
         // Await the spawned task - panics will be caught by JoinHandle
         let execution_result = handle.await;
+
+        // Extract job from Arc for mutation (try_unwrap to avoid clone if possible)
+        let mut job = Arc::try_unwrap(job_arc)
+            .unwrap_or_else(|arc| (*arc).clone()); // Fallback to clone if still referenced
 
         // Update job based on result (with retry logic - Phase 2, ADR-002)
         use crate::application::retry::RetryDecision;
@@ -216,7 +223,9 @@ impl Worker {
     }
     /// Execute job with real TaskExecutor (Phase 2)
     /// Static method to avoid unnecessary Worker cloning in spawn
-    async fn execute_job_static(task_executor: &Arc<dyn TaskExecutor>, job: &Job) -> Result<()> {
+    /// 
+    /// Accepts Arc<Job> to avoid cloning large payloads
+    async fn execute_job_static(task_executor: &Arc<dyn TaskExecutor>, job: &Arc<Job>) -> Result<()> {
         use crate::domain::ExecutionMode;
 
         // Check execution mode
