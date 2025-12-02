@@ -180,9 +180,9 @@ impl Worker {
             Ok(Ok(_)) => {
                 // Task succeeded
                 let now = self.time_provider.now_millis();
-                job.complete(now)?;
                 info!("Job completed: {}", job.id);
-                self.job_repo.update(&job).await?;
+                // Optimization: Partial update (only state + finished_at)
+                self.job_repo.update_state(&job.id, crate::domain::JobState::Done, Some(now)).await?;
             }
             Ok(Err(e)) => {
                 // Task failed gracefully - check if we should retry
@@ -197,13 +197,14 @@ impl Worker {
                         );
 
                         self.retry_policy.prepare_for_retry(&mut job);
+                        // Full update needed (state, attempts, schedule_at all change)
                         self.job_repo.update(&job).await?;
                     }
                     RetryDecision::Failed => {
                         error!("Job failed {} after max retries: {}", job.id, e);
                         let now = self.time_provider.now_millis();
-                        job.fail(now);
-                        self.job_repo.update(&job).await?;
+                        // Optimization: Partial update (only state + finished_at)
+                        self.job_repo.update_state(&job.id, crate::domain::JobState::Failed, Some(now)).await?;
                     }
                 }
             }
@@ -215,8 +216,8 @@ impl Worker {
                     error!("Job cancelled {}: {:?}", job.id, join_err);
                 }
                 let now = self.time_provider.now_millis();
-                job.fail(now);
-                self.job_repo.update(&job).await?;
+                // Optimization: Partial update (only state + finished_at)
+                self.job_repo.update_state(&job.id, crate::domain::JobState::Failed, Some(now)).await?;
             }
         }
         Ok(true)

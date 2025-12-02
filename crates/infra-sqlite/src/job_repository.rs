@@ -10,9 +10,70 @@ use semantica_core::port::{
 use sqlx::SqlitePool;
 use std::sync::Arc;
 
-// Helper to convert sqlx::Error to AppError
+// Helper to convert sqlx::Error to AppError with structured information
 fn map_sqlx_error(err: sqlx::Error) -> AppError {
-    AppError::Database(err.to_string())
+    match &err {
+        sqlx::Error::Database(db_err) => {
+            // Extract database-specific error code and message
+            if let Some(code) = db_err.code() {
+                let code_str = code.as_ref();
+                
+                // SQLite error codes: https://www.sqlite.org/rescode.html
+                match code_str {
+                    "2067" | "1555" => {
+                        // UNIQUE constraint failed
+                        AppError::Database(format!(
+                            "Unique constraint violation: {} ({})",
+                            db_err.message(),
+                            code_str
+                        ))
+                    }
+                    "787" | "3850" => {
+                        // FOREIGN KEY constraint failed
+                        AppError::Database(format!(
+                            "Foreign key constraint violation: {} ({})",
+                            db_err.message(),
+                            code_str
+                        ))
+                    }
+                    "5" => {
+                        // SQLITE_BUSY - database is locked
+                        AppError::Database(format!(
+                            "Database locked (SQLITE_BUSY): {}",
+                            db_err.message()
+                        ))
+                    }
+                    "13" => {
+                        // SQLITE_FULL - database or disk is full
+                        AppError::Database(format!(
+                            "Database full: {}",
+                            db_err.message()
+                        ))
+                    }
+                    _ => {
+                        // Other database errors
+                        AppError::Database(format!(
+                            "Database error [{}]: {}",
+                            code_str,
+                            db_err.message()
+                        ))
+                    }
+                }
+            } else {
+                AppError::Database(format!("Database error: {}", db_err.message()))
+            }
+        }
+        sqlx::Error::RowNotFound => {
+            AppError::Database("Row not found".to_string())
+        }
+        sqlx::Error::ColumnNotFound(col) => {
+            AppError::Database(format!("Column not found: {}", col))
+        }
+        _ => {
+            // Connection, pool, protocol errors
+            AppError::Database(format!("{}: {}", err, err))
+        }
+    }
 }
 
 pub struct SqliteJobRepository {
@@ -137,6 +198,42 @@ impl JobRepository for SqliteJobRepository {
         .bind(&job.result_summary)
         .bind(&job.artifacts)
         .bind(&job.id)
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        Ok(())
+    }
+
+    async fn update_state(&self, id: &JobId, state: JobState, finished_at: Option<i64>) -> Result<()> {
+        // Optimization: Update only state and finished_at (reduces WAL writes)
+        sqlx::query(
+            r#"
+            UPDATE jobs
+            SET state = ?, finished_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(state.to_string())
+        .bind(finished_at)
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        Ok(())
+    }
+
+    async fn increment_attempts(&self, id: &JobId) -> Result<()> {
+        // Optimization: Atomic increment without reading
+        sqlx::query(
+            r#"
+            UPDATE jobs
+            SET attempts = attempts + 1
+            WHERE id = ?
+            "#,
+        )
+        .bind(id)
         .execute(&self.pool)
         .await
         .map_err(map_sqlx_error)?;

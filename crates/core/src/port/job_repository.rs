@@ -13,8 +13,18 @@ pub trait JobRepository: Send + Sync {
     /// Find job by ID
     async fn find_by_id(&self, id: &JobId) -> Result<Option<Job>>;
 
-    /// Update job
+    /// Update job (full update - all fields)
     async fn update(&self, job: &Job) -> Result<()>;
+
+    /// Update only job state and finished_at (for completion)
+    /// 
+    /// Optimization: Avoids updating all 19+ fields when only state changes
+    async fn update_state(&self, id: &JobId, state: JobState, finished_at: Option<i64>) -> Result<()>;
+
+    /// Increment attempts counter (for retry)
+    /// 
+    /// Optimization: Avoids full update when only attempts changes
+    async fn increment_attempts(&self, id: &JobId) -> Result<()>;
 
     /// Pop next job from queue (FIFO with priority)
     async fn pop_next(&self, queue: &str) -> Result<Option<Job>>;
