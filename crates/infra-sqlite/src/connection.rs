@@ -4,6 +4,10 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use std::str::FromStr;
 use std::time::Duration;
 
+// Connection pool defaults (configurable via env vars)
+const DEFAULT_MAX_CONNECTIONS: u32 = 20;
+const DEFAULT_BUSY_TIMEOUT_SECS: u64 = 5;
+
 /// Create SQLite connection pool with WAL mode and optimizations
 ///
 /// # Configuration
@@ -14,12 +18,12 @@ pub async fn create_pool(database_url: &str) -> Result<SqlitePool, Box<dyn std::
     let max_connections: u32 = std::env::var("SEMANTICA_POOL_SIZE")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(20); // Default 20 (was 10)
+        .unwrap_or(DEFAULT_MAX_CONNECTIONS);
 
     let busy_timeout_secs: u64 = std::env::var("SEMANTICA_POOL_TIMEOUT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(5); // Default 5 seconds
+        .unwrap_or(DEFAULT_BUSY_TIMEOUT_SECS);
 
     let options = SqliteConnectOptions::from_str(database_url)?
         .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)

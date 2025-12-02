@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use semantica_core::domain::{Job, JobState};
-use semantica_core::error::Result;
+use semantica_core::error::{AppError, Result};
 use semantica_core::port::{JobRepositoryTransaction, TimeProvider, Transaction};
 use sqlx::{Sqlite, Transaction as SqlxTransaction};
 use std::sync::Arc;
@@ -24,7 +24,7 @@ impl Transaction for SqliteJobTransaction<'_> {
         self.tx
             .commit()
             .await
-            .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+            .map_err(|e| map_transaction_error("commit", e))?;
         Ok(())
     }
 
@@ -32,8 +32,36 @@ impl Transaction for SqliteJobTransaction<'_> {
         self.tx
             .rollback()
             .await
-            .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+            .map_err(|e| map_transaction_error("rollback", e))?;
         Ok(())
+    }
+}
+
+/// Map transaction errors to structured AppError
+fn map_transaction_error(operation: &str, err: sqlx::Error) -> AppError {
+    match &err {
+        sqlx::Error::Database(db_err) => {
+            let code = db_err.code().map(|c| c.to_string()).unwrap_or_else(|| "UNKNOWN".to_string());
+            match code.as_str() {
+                "5" => AppError::Database(format!(
+                    "Transaction {} failed: Database locked (SQLITE_BUSY)",
+                    operation
+                )),
+                "8" => AppError::Database(format!(
+                    "Transaction {} failed: Read-only database",
+                    operation
+                )),
+                _ => AppError::Database(format!(
+                    "Transaction {} failed [code: {}]: {}",
+                    operation, code, db_err
+                )),
+            }
+        }
+        sqlx::Error::PoolTimedOut => AppError::Database(format!(
+            "Transaction {} failed: Connection pool timeout",
+            operation
+        )),
+        _ => AppError::Database(format!("Transaction {} failed: {}", operation, err)),
     }
 }
 
@@ -45,7 +73,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
                 .bind(subject_key)
                 .fetch_optional(&mut *self.tx)
                 .await
-                .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+                .map_err(|e| AppError::Database(format!("Failed to get generation: {}", e)))?;
 
         match gen {
             Some(g) => Ok(g),
@@ -55,7 +83,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
                     .bind(subject_key)
                     .execute(&mut *self.tx)
                     .await
-                    .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+                    .map_err(|e| AppError::Database(format!("Failed to insert subject: {}", e)))?;
                 Ok(0)
             }
         }
@@ -125,7 +153,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
         .bind(&state_queued)
         .execute(&mut *self.tx)
         .await
-        .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+        .map_err(|e| AppError::Database(format!("Failed to mark superseded: {}", e)))?;
 
         // Update subjects table
         sqlx::query("UPDATE subjects SET latest_generation = ? WHERE subject_key = ?")
@@ -133,7 +161,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
             .bind(subject_key)
             .execute(&mut *self.tx)
             .await
-            .map_err(|e| semantica_core::error::AppError::Database(e.to_string()))?;
+            .map_err(|e| AppError::Database(format!("Failed to update subject generation: {}", e)))?;
 
         Ok(result.rows_affected())
     }

@@ -4,6 +4,10 @@
 
 use crate::error::to_rpc_error;
 use crate::rate_limiter::RateLimiter;
+
+// Rate limiting defaults (configurable via env vars)
+const DEFAULT_RATE_LIMIT_BURST: u32 = 200;
+const DEFAULT_RATE_LIMIT_RATE: u32 = 100;
 use crate::types::{
     CancelRequest, CancelResponse, EnqueueRequest, EnqueueResponse, MaintenanceRequest,
     MaintenanceResponse, StatsRequest, StatsResponse, TailLogsRequest, TailLogsResponse,
@@ -34,16 +38,16 @@ impl RpcHandler {
         time_provider: Arc<dyn TimeProvider>,
         maintenance: Arc<dyn Maintenance>,
     ) -> Self {
-        // Default: 200 burst, 100 req/sec (configurable via env)
+        // Read rate limiting configuration from environment
         let max_burst: u32 = std::env::var("SEMANTICA_RATE_LIMIT_BURST")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(200);
+            .unwrap_or(DEFAULT_RATE_LIMIT_BURST);
 
         let rate_per_sec: u32 = std::env::var("SEMANTICA_RATE_LIMIT_RATE")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(100);
+            .unwrap_or(DEFAULT_RATE_LIMIT_RATE);
 
         Self {
             tx_job_repo,

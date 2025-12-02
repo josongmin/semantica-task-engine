@@ -139,5 +139,46 @@ mod tests {
         // Should have ~10 tokens now
         assert!(limiter.check().await);
     }
+
+    #[tokio::test]
+    async fn test_rate_limiter_concurrent() {
+        use std::sync::Arc;
+        
+        let limiter = Arc::new(RateLimiter::new(100, 50)); // 50 req/sec, burst 100
+        
+        // Spawn 10 concurrent tasks, each trying 20 requests
+        let mut handles = vec![];
+        for _ in 0..10 {
+            let limiter_clone = Arc::clone(&limiter);
+            let handle = tokio::spawn(async move {
+                let mut allowed = 0;
+                for _ in 0..20 {
+                    if limiter_clone.check().await {
+                        allowed += 1;
+                    }
+                }
+                allowed
+            });
+            handles.push(handle);
+        }
+        
+        // Collect results
+        let mut total_allowed = 0;
+        for handle in handles {
+            total_allowed += handle.await.unwrap();
+        }
+        
+        // Total requests = 200, but only 100 should be allowed (burst limit)
+        assert!(
+            total_allowed <= 100,
+            "Expected at most 100 allowed, got {}",
+            total_allowed
+        );
+        assert!(
+            total_allowed >= 90,
+            "Expected at least 90 allowed (some tolerance), got {}",
+            total_allowed
+        );
+    }
 }
 

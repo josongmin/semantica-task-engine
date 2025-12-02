@@ -5,6 +5,10 @@ use crate::error::Result;
 use crate::port::{IdProvider, TimeProvider, TransactionalJobRepository};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "enqueue_test.rs"]
+mod enqueue_test;
+
 /// Enqueue request (Phase 1: minimal fields)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnqueueRequest {
@@ -70,6 +74,14 @@ pub async fn execute(
     Ok(job_id)
 }
 
+// Validation constants (ADR-040: No magic numbers)
+const MAX_QUEUE_NAME_LEN: usize = 64;
+const MAX_JOB_TYPE_LEN: usize = 128;
+const MAX_SUBJECT_KEY_LEN: usize = 512;
+const MIN_PRIORITY: i32 = -100;
+const MAX_PRIORITY: i32 = 100;
+const MAX_PAYLOAD_DEPTH: usize = 32;
+
 /// Validate enqueue request (Security: ADR-040)
 ///
 /// Prevents:
@@ -81,12 +93,15 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
     use crate::error::AppError;
 
     // Queue name validation
+    // Note: .len() returns character count, not bytes
+    // This is safe because alphanumeric check below restricts to ASCII-compatible chars
     if req.queue.is_empty() {
         return Err(AppError::Validation("Queue name cannot be empty".to_string()));
     }
-    if req.queue.len() > 64 {
+    if req.queue.len() > MAX_QUEUE_NAME_LEN {
         return Err(AppError::Validation(format!(
-            "Queue name too long (max 64 chars, got {})",
+            "Queue name too long (max {} chars, got {})",
+            MAX_QUEUE_NAME_LEN,
             req.queue.len()
         )));
     }
@@ -100,9 +115,10 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
     if req.job_type.is_empty() {
         return Err(AppError::Validation("Job type cannot be empty".to_string()));
     }
-    if req.job_type.len() > 128 {
+    if req.job_type.len() > MAX_JOB_TYPE_LEN {
         return Err(AppError::Validation(format!(
-            "Job type too long (max 128 chars, got {})",
+            "Job type too long (max {} chars, got {})",
+            MAX_JOB_TYPE_LEN,
             req.job_type.len()
         )));
     }
@@ -113,9 +129,10 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
             "Subject key cannot be empty".to_string(),
         ));
     }
-    if req.subject_key.len() > 512 {
+    if req.subject_key.len() > MAX_SUBJECT_KEY_LEN {
         return Err(AppError::Validation(format!(
-            "Subject key too long (max 512 chars, got {})",
+            "Subject key too long (max {} chars, got {})",
+            MAX_SUBJECT_KEY_LEN,
             req.subject_key.len()
         )));
     }
@@ -126,8 +143,6 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
     validate_payload_complexity(&req.payload)?;
 
     // Priority validation
-    const MIN_PRIORITY: i32 = -100;
-    const MAX_PRIORITY: i32 = 100;
     if req.priority < MIN_PRIORITY || req.priority > MAX_PRIORITY {
         return Err(AppError::Validation(format!(
             "Priority out of range (must be between {} and {}, got {})",
@@ -145,13 +160,11 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
 fn validate_payload_complexity(value: &serde_json::Value) -> Result<()> {
     use crate::error::AppError;
     
-    const MAX_DEPTH: usize = 32;
-    
     fn check_depth(value: &serde_json::Value, current_depth: usize) -> Result<()> {
-        if current_depth > MAX_DEPTH {
+        if current_depth > MAX_PAYLOAD_DEPTH {
             return Err(AppError::Validation(format!(
                 "Payload too deeply nested (max depth: {}, exceeded)",
-                MAX_DEPTH
+                MAX_PAYLOAD_DEPTH
             )));
         }
         
