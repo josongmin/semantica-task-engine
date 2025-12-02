@@ -3,6 +3,7 @@
 //! Implements the business logic for each JSON-RPC method.
 
 use crate::error::to_rpc_error;
+use crate::rate_limiter::RateLimiter;
 use crate::types::{
     CancelRequest, CancelResponse, EnqueueRequest, EnqueueResponse, MaintenanceRequest,
     MaintenanceResponse, StatsRequest, StatsResponse, TailLogsRequest, TailLogsResponse,
@@ -21,6 +22,7 @@ pub struct RpcHandler {
     id_provider: Arc<dyn IdProvider>,
     time_provider: Arc<dyn TimeProvider>,
     maintenance: Arc<dyn Maintenance>,
+    rate_limiter: Arc<RateLimiter>,
     start_time: std::time::Instant,
 }
 
@@ -32,12 +34,24 @@ impl RpcHandler {
         time_provider: Arc<dyn TimeProvider>,
         maintenance: Arc<dyn Maintenance>,
     ) -> Self {
+        // Default: 200 burst, 100 req/sec (configurable via env)
+        let max_burst: u32 = std::env::var("SEMANTICA_RATE_LIMIT_BURST")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(200);
+
+        let rate_per_sec: u32 = std::env::var("SEMANTICA_RATE_LIMIT_RATE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(100);
+
         Self {
             tx_job_repo,
             job_repo,
             id_provider,
             time_provider,
             maintenance,
+            rate_limiter: Arc::new(RateLimiter::new(max_burst, rate_per_sec)),
             start_time: std::time::Instant::now(),
         }
     }
@@ -47,6 +61,15 @@ impl RpcHandler {
         &self,
         params: EnqueueRequest,
     ) -> Result<EnqueueResponse, ErrorObjectOwned> {
+        // Rate limiting check (DoS protection)
+        if !self.rate_limiter.check().await {
+            return Err(jsonrpsee::types::error::ErrorObject::owned(
+                4003, // THROTTLED
+                "Rate limit exceeded. Please slow down.",
+                None::<()>,
+            ));
+        }
+
         let req = enqueue::EnqueueRequest {
             job_type: params.job_type,
             queue: params.queue.clone(),
@@ -73,7 +96,17 @@ impl RpcHandler {
 
     /// dev.cancel.v1
     pub async fn cancel(&self, params: CancelRequest) -> Result<CancelResponse, ErrorObjectOwned> {
-        let job = self
+        // Rate limiting check (DoS protection)
+        if !self.rate_limiter.check().await {
+            return Err(jsonrpsee::types::error::ErrorObject::owned(
+                4003, // THROTTLED
+                "Rate limit exceeded. Please slow down.",
+                None::<()>,
+            ));
+        }
+
+        // Check if job exists
+        let _job = self
             .job_repo
             .find_by_id(&params.job_id)
             .await
@@ -85,12 +118,10 @@ impl RpcHandler {
                 )))
             })?;
 
-        // Cancel logic: Update state to Cancelled
-        let mut updated_job = job;
-        updated_job.state = JobState::Cancelled;
-
+        // Cancel logic: Partial update (optimization - only update state)
+        let now = self.time_provider.now_millis();
         self.job_repo
-            .update(&updated_job)
+            .update_state(&params.job_id, JobState::Cancelled, Some(now))
             .await
             .map_err(to_rpc_error)?;
 

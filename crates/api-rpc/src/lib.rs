@@ -5,6 +5,7 @@
 
 pub mod error;
 pub mod handler;
+mod rate_limiter;
 pub mod server;
 pub mod types;
 
