@@ -1,0 +1,38 @@
+# Semantica Task Engine - Development Dockerfile
+# 빠른 빌드 + hot reload용 (cargo-watch 포함)
+
+FROM rust:1.83-slim
+
+# 개발 도구 설치
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    curl \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Cargo 의존성 캐싱
+COPY Cargo.toml Cargo.lock ./
+COPY rustfmt.toml ./
+COPY crates ./crates
+
+# integration-tests는 dockerignore로 제외되므로 Cargo.toml에서 제거
+RUN sed -i '/"crates\/integration-tests",/d' Cargo.toml
+
+# 개발 모드 빌드 (빠름)
+RUN cargo build --package semantica-daemon
+
+# 데이터 디렉토리 생성
+RUN mkdir -p /var/lib/semantica /var/log/semantica
+
+# 헬스체크 엔드포인트 (간단한 JSON-RPC ping)
+RUN echo '#!/bin/sh\ncurl -X POST http://localhost:9527 -H "Content-Type: application/json" -d '"'"'{"jsonrpc":"2.0","id":1,"method":"admin.stats.v1","params":{}}'"'"' 2>/dev/null | grep -q "result"' > /usr/local/bin/healthcheck.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
+
+EXPOSE 9527
+
+# 개발 모드로 실행
+CMD ["cargo", "run", "--package", "semantica-daemon"]
+

@@ -6,7 +6,7 @@ Usage:
 """
 
 import asyncio
-from semantica import SemanticaTaskClient, EnqueueRequest
+from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
 
 
 async def main():

@@ -6,7 +6,7 @@ authors = ["Semantica Team"]
 description = "Main daemon executable for Semantica Task Engine"
 
 [[bin]]
-name = "semantica"
+name = "semantica-task-engine"
 path = "src/main.rs"
 
 [dependencies]

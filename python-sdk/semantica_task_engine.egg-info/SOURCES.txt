@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+semantica_task_engine/__init__.py
+semantica_task_engine/client.py
+semantica_task_engine/daemon.py
+semantica_task_engine/errors.py
+semantica_task_engine/types.py
+semantica_task_engine.egg-info/PKG-INFO
+semantica_task_engine.egg-info/SOURCES.txt
+semantica_task_engine.egg-info/dependency_links.txt
+semantica_task_engine.egg-info/requires.txt
+semantica_task_engine.egg-info/top_level.txt
+tests/test_basic.py

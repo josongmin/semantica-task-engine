@@ -1,3 +1,30 @@
+Metadata-Version: 2.4
+Name: semantica-task-sdk
+Version: 0.1.0
+Summary: Python SDK for SemanticaTask Engine
+Author: Semantica Team
+License: MIT
+Project-URL: Homepage, https://github.com/your-org/semantica-task-engine
+Project-URL: Repository, https://github.com/your-org/semantica-task-engine
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: httpx>=0.24.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
 # SemanticaTask Python SDK
 
 **비동기 Job Queue 시스템용 Python 클라이언트 라이브러리**
@@ -17,7 +44,7 @@ SemanticaTask Engine은 백그라운드에서 실행되는 Job Queue 시스템�
 
 ```bash
 # PyPI (준비 중)
-pip install semantica-task-engine
+pip install semantica-task-sdk
 
 # Git에서 직접 설치
 pip install git+https://github.com/your-org/semantica-task-engine#subdirectory=python-sdk
@@ -49,7 +76,7 @@ docker run -p 9527:9527 semantica-task-engine
 
 ```python
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def main():
     # 1. Daemon에 연결 (async with 필수)
@@ -242,7 +269,7 @@ for line in response.lines:
 
 ```python
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def index_files(file_paths: list[str]):
     async with SemanticaTaskClient("http://localhost:9527") as client:
@@ -279,7 +306,7 @@ asyncio.run(index_files([
 
 ```python
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def monitor_job(job_id: str):
     """Job이 완료될 때까지 로그 폴링"""
@@ -306,7 +333,7 @@ asyncio.run(monitor_job("c4b2bb3a-..."))
 
 ```python
 import asyncio
-from semantica_task_engine import (
+from semantica import (
     SemanticaTaskClient,
     EnqueueRequest,
     ConnectionError,
@@ -348,7 +375,7 @@ asyncio.run(safe_enqueue())
 ```python
 import os
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def main():
     # 환경변수 SEMANTICA_RPC_URL 사용 (기본값: http://127.0.0.1:9527)
@@ -453,7 +480,7 @@ async with SemanticaTaskClient(timeout=120.0) as client:
 
 ```python
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest
+from semantica import SemanticaTaskClient, EnqueueRequest
 
 async def enqueue_parallel(files: list[str]):
     async with SemanticaTaskClient() as client:
@@ -482,7 +509,7 @@ asyncio.run(enqueue_parallel(["file1.py", "file2.py", "file3.py"]))
 
 ```python
 import asyncio
-from semantica_task_engine import SemanticaTaskClient, EnqueueRequest, RpcError
+from semantica import SemanticaTaskClient, EnqueueRequest, RpcError
 
 async def enqueue_with_retry(request: EnqueueRequest, max_retries: int = 3):
     async with SemanticaTaskClient() as client:

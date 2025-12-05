@@ -1,0 +1,54 @@
+# Semantica Task Engine - Development & Testing
+# Python 프로젝트 통합 테스트용
+
+version: '3.8'
+
+services:
+  # Daemon (개발 모드)
+  daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: semantica-dev
+    ports:
+      - "9527:9527"
+    volumes:
+      - ./target:/target:rw  # 빌드 캐시
+      - ./data:/var/lib/semantica:rw
+      - ./logs:/var/log/semantica:rw
+    environment:
+      - SEMANTICA_DB_PATH=/var/lib/semantica/meta.db
+      - SEMANTICA_RPC_PORT=9527
+      - RUST_LOG=semantica=debug,sqlx=info
+      - RUST_BACKTRACE=1
+    networks:
+      - dev-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9527/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Python 테스트 클라이언트 (예제)
+  python-client:
+    build:
+      context: ./examples/python
+      dockerfile: Dockerfile
+    container_name: semantica-python-test
+    depends_on:
+      daemon:
+        condition: service_healthy
+    environment:
+      - SEMANTICA_RPC_URL=http://daemon:9527
+    networks:
+      - dev-net
+    command: python test_integration.py
+    profiles:
+      - test  # docker-compose --profile test up으로 실행
+
+networks:
+  dev-net:
+    driver: bridge
+
+

@@ -1,0 +1,47 @@
+# 다른 Python 프로젝트에서 Semantica Task Engine 사용 예제
+# 이 파일을 참고해서 당신의 프로젝트 docker-compose.yml에 추가하세요
+
+version: '3.8'
+
+services:
+  # Semantica Task Engine Daemon
+  semantica:
+    image: semantica-task-engine:latest
+    container_name: semantica-daemon
+    ports:
+      - "9527:9527"  # 호스트에서도 접근 가능
+    volumes:
+      - semantica-data:/var/lib/semantica
+    environment:
+      - SEMANTICA_DB_PATH=/var/lib/semantica/meta.db
+      - SEMANTICA_RPC_PORT=9527
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9527/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - app-network
+
+  # 당신의 Python 앱
+  your-python-app:
+    build: .
+    depends_on:
+      semantica:
+        condition: service_healthy
+    environment:
+      # Python 코드에서 이 URL로 연결
+      - SEMANTICA_RPC_URL=http://semantica:9527
+    networks:
+      - app-network
+    # ... 나머지 설정
+
+volumes:
+  semantica-data:
+
+networks:
+  app-network:
+    driver: bridge
+
+

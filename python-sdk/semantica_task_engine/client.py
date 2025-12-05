@@ -5,6 +5,7 @@ from typing import Optional
 
 from .errors import ConnectionError, RpcError
 from .types import EnqueueRequest, EnqueueResponse, CancelResponse, TailLogsResponse
+from .daemon import DaemonManager
 
 
 class SemanticaTaskClient:
@@ -23,20 +24,41 @@ class SemanticaTaskClient:
         ...     print(f"Job ID: {response.job_id}")
     """
 
-    def __init__(self, url: str = "http://127.0.0.1:9527", timeout: float = 30.0):
+    def __init__(
+        self, 
+        url: str = "http://127.0.0.1:9527", 
+        timeout: float = 30.0,
+        auto_start_daemon: bool = True
+    ):
         """Initialize client
         
         Args:
             url: RPC endpoint URL
             timeout: Request timeout in seconds
+            auto_start_daemon: Automatically start daemon if not running (default: True)
         """
         self.url = url
         self.timeout = timeout
+        self.auto_start_daemon = auto_start_daemon
         self._client: Optional[httpx.AsyncClient] = None
         self._request_id = 0
+        self._daemon_manager: Optional[DaemonManager] = None
+        
+        # Extract port from URL
+        if ":" in url.split("//")[-1]:
+            port = int(url.split(":")[-1].split("/")[0])
+        else:
+            port = 9527
+        
+        if auto_start_daemon:
+            self._daemon_manager = DaemonManager(port=port, auto_start=True)
 
     async def __aenter__(self):
         """Context manager entry"""
+        # Start daemon if needed
+        if self._daemon_manager:
+            await self._daemon_manager.start_daemon()
+        
         self._client = httpx.AsyncClient(timeout=self.timeout)
         return self
 
@@ -45,6 +67,10 @@ class SemanticaTaskClient:
         if self._client:
             await self._client.aclose()
             self._client = None
+        
+        # Stop daemon if we started it
+        if self._daemon_manager:
+            await self._daemon_manager.stop_daemon()
 
     async def _request(self, method: str, params: dict) -> dict:
         """Send JSON-RPC request"""
