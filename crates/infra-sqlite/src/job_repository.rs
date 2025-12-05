@@ -263,7 +263,10 @@ impl JobRepository for SqliteJobRepository {
     }
 
     async fn pop_next(&self, queue: &str) -> Result<Option<Job>> {
-        // Atomic UPDATE ... RETURNING to prevent race conditions with multiple workers
+        // Phase 3: Pop-time supersede
+        // Strategy: Only pop jobs with latest generation for their subject_key
+        // This prevents popping obsolete jobs that were enqueued before a newer version
+        
         let now = self.time_provider.now_millis();
         let state_running = JobState::Running.to_string();
         let state_queued = JobState::Queued.to_string();
@@ -273,9 +276,15 @@ impl JobRepository for SqliteJobRepository {
             UPDATE jobs
             SET state = ?, started_at = ?
             WHERE id = (
-                SELECT id FROM jobs
-                WHERE queue = ? AND state = ?
-                ORDER BY priority DESC, created_at ASC, id ASC
+                SELECT j.id FROM jobs j
+                WHERE j.queue = ? AND j.state = ?
+                  -- Pop-time supersede: Only pop if this job has the latest generation
+                  AND j.generation = (
+                      SELECT MAX(generation) 
+                      FROM jobs 
+                      WHERE subject_key = j.subject_key
+                  )
+                ORDER BY j.priority DESC, j.created_at ASC, j.id ASC
                 LIMIT 1
             )
             RETURNING *
