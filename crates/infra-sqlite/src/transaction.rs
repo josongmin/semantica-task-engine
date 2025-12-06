@@ -68,25 +68,26 @@ fn map_transaction_error(operation: &str, err: sqlx::Error) -> AppError {
 #[async_trait]
 impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
     async fn get_latest_generation(&mut self, subject_key: &str) -> Result<i64> {
-        let gen: Option<i64> =
+        // Phase 4: Use UPSERT to prevent deadlock on concurrent inserts
+        // This ensures only one transaction succeeds in creating the subject
+        sqlx::query(
+            "INSERT INTO subjects (subject_key, latest_generation) VALUES (?, 0)
+             ON CONFLICT(subject_key) DO NOTHING"
+        )
+        .bind(subject_key)
+        .execute(&mut *self.tx)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to ensure subject exists: {}", e)))?;
+
+        // Now SELECT is guaranteed to succeed
+        let gen: i64 =
             sqlx::query_scalar("SELECT latest_generation FROM subjects WHERE subject_key = ?")
                 .bind(subject_key)
-                .fetch_optional(&mut *self.tx)
+                .fetch_one(&mut *self.tx)
                 .await
                 .map_err(|e| AppError::Database(format!("Failed to get generation: {}", e)))?;
 
-        match gen {
-            Some(g) => Ok(g),
-            None => {
-                // Insert new subject with generation 0
-                sqlx::query("INSERT INTO subjects (subject_key, latest_generation) VALUES (?, 0)")
-                    .bind(subject_key)
-                    .execute(&mut *self.tx)
-                    .await
-                    .map_err(|e| AppError::Database(format!("Failed to insert subject: {}", e)))?;
-                Ok(0)
-            }
-        }
+        Ok(gen)
     }
 
     async fn insert(&mut self, job: &Job) -> Result<()> {
@@ -155,13 +156,17 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
         .await
         .map_err(|e| AppError::Database(format!("Failed to mark superseded: {}", e)))?;
 
-        // Update subjects table
-        sqlx::query("UPDATE subjects SET latest_generation = ? WHERE subject_key = ?")
-            .bind(below_generation)
-            .bind(subject_key)
-            .execute(&mut *self.tx)
-            .await
-            .map_err(|e| AppError::Database(format!("Failed to update subject generation: {}", e)))?;
+        // Update subjects table (UPSERT for concurrency safety)
+        sqlx::query(
+            "INSERT INTO subjects (subject_key, latest_generation) VALUES (?, ?)
+             ON CONFLICT(subject_key) DO UPDATE SET latest_generation = ?"
+        )
+        .bind(subject_key)
+        .bind(below_generation)
+        .bind(below_generation)
+        .execute(&mut *self.tx)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to update subject generation: {}", e)))?;
 
         Ok(result.rows_affected())
     }

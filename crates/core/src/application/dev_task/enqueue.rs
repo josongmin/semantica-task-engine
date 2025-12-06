@@ -81,6 +81,7 @@ const MAX_SUBJECT_KEY_LEN: usize = 512;
 const MIN_PRIORITY: i32 = -100;
 const MAX_PRIORITY: i32 = 100;
 const MAX_PAYLOAD_DEPTH: usize = 32;
+const MAX_PAYLOAD_SIZE_BYTES: usize = 10_000_000; // 10MB (ADR-040)
 
 /// Validate enqueue request (Security: ADR-040)
 ///
@@ -136,10 +137,25 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
             req.subject_key.len()
         )));
     }
+    // Security: Reject null bytes (can cause issues in C FFI, file paths)
+    if req.subject_key.contains('\0') {
+        return Err(AppError::Validation(
+            "Subject key cannot contain null bytes".to_string(),
+        ));
+    }
 
-    // Payload size validation (lightweight check)
-    // Note: Heavy validation done at RPC layer (max_request_body_size)
-    // This is a secondary check for depth/complexity
+    // Payload validation (Defense in Depth - ADR-040)
+    // 1. Size check (even though RPC layer has max_request_body_size)
+    let payload_str = req.payload.to_string();
+    if payload_str.len() > MAX_PAYLOAD_SIZE_BYTES {
+        return Err(AppError::Validation(format!(
+            "Payload too large (max {} bytes, got {} bytes)",
+            MAX_PAYLOAD_SIZE_BYTES,
+            payload_str.len()
+        )));
+    }
+    
+    // 2. Complexity check (nesting depth)
     validate_payload_complexity(&req.payload)?;
 
     // Priority validation
