@@ -155,7 +155,7 @@ impl Worker {
 
         // Execute job with panic isolation (ADR-002: Worker panic must not kill daemon)
         // Using tokio::task::spawn to isolate panics
-        // 
+        //
         // Optimization: Use Arc to avoid cloning large payloads
         let job_arc = Arc::new(job);
         let job_for_exec = Arc::clone(&job_arc);
@@ -170,8 +170,7 @@ impl Worker {
         let execution_result = handle.await;
 
         // Extract job from Arc for mutation (try_unwrap to avoid clone if possible)
-        let mut job = Arc::try_unwrap(job_arc)
-            .unwrap_or_else(|arc| (*arc).clone()); // Fallback to clone if still referenced
+        let mut job = Arc::try_unwrap(job_arc).unwrap_or_else(|arc| (*arc).clone()); // Fallback to clone if still referenced
 
         // Update job based on result (with retry logic - Phase 2, ADR-002)
         use crate::application::retry::RetryDecision;
@@ -182,7 +181,9 @@ impl Worker {
                 let now = self.time_provider.now_millis();
                 info!("Job completed: {}", job.id);
                 // Optimization: Partial update (only state + finished_at)
-                self.job_repo.update_state(&job.id, crate::domain::JobState::Done, Some(now)).await?;
+                self.job_repo
+                    .update_state(&job.id, crate::domain::JobState::Done, Some(now))
+                    .await?;
             }
             Ok(Err(e)) => {
                 // Task failed gracefully - check if we should retry
@@ -204,7 +205,9 @@ impl Worker {
                         error!("Job failed {} after max retries: {}", job.id, e);
                         let now = self.time_provider.now_millis();
                         // Optimization: Partial update (only state + finished_at)
-                        self.job_repo.update_state(&job.id, crate::domain::JobState::Failed, Some(now)).await?;
+                        self.job_repo
+                            .update_state(&job.id, crate::domain::JobState::Failed, Some(now))
+                            .await?;
                     }
                 }
             }
@@ -217,16 +220,21 @@ impl Worker {
                 }
                 let now = self.time_provider.now_millis();
                 // Optimization: Partial update (only state + finished_at)
-                self.job_repo.update_state(&job.id, crate::domain::JobState::Failed, Some(now)).await?;
+                self.job_repo
+                    .update_state(&job.id, crate::domain::JobState::Failed, Some(now))
+                    .await?;
             }
         }
         Ok(true)
     }
     /// Execute job with real TaskExecutor (Phase 2)
     /// Static method to avoid unnecessary Worker cloning in spawn
-    /// 
+    ///
     /// Accepts Arc<Job> to avoid cloning large payloads
-    async fn execute_job_static(task_executor: &Arc<dyn TaskExecutor>, job: &Arc<Job>) -> Result<()> {
+    async fn execute_job_static(
+        task_executor: &Arc<dyn TaskExecutor>,
+        job: &Arc<Job>,
+    ) -> Result<()> {
         use crate::domain::ExecutionMode;
 
         // Check execution mode

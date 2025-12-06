@@ -164,7 +164,7 @@ async fn test_subprocess_execution() {
 }
 
 /// DoD 2 (Extended): Recovery correctly identifies and processes orphaned subprocess jobs
-/// 
+///
 /// Note: Full subprocess kill testing is complex due to zombie process handling.
 /// This test verifies the recovery logic correctly:
 /// 1. Identifies orphaned RUNNING jobs
@@ -231,7 +231,10 @@ async fn test_recovery_marks_orphaned_subprocess_failed() {
         JobState::Failed,
         "Subprocess job should be marked FAILED after recovery"
     );
-    assert!(job_after.pid.is_none(), "PID should be cleared after recovery");
+    assert!(
+        job_after.pid.is_none(),
+        "PID should be cleared after recovery"
+    );
     assert!(job_after.finished_at.is_some(), "finished_at should be set");
 
     std::fs::remove_file(db_path).unwrap();

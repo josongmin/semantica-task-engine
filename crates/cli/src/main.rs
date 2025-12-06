@@ -208,7 +208,8 @@ async fn main() -> Result<()> {
                     println!("  {} {}", "Done:".bold(), stats["done_jobs"]);
                     println!("  {} {}", "Failed:".bold(), stats["failed_jobs"]);
                     println!();
-                    let db_mb = stats["db_size_bytes"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
+                    let db_mb =
+                        stats["db_size_bytes"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
                     println!("  {} {:.2} MB", "DB Size:".bold(), db_mb);
                     println!("  {} {} seconds", "Uptime:".bold(), stats["uptime_seconds"]);
                 }
@@ -239,11 +240,22 @@ async fn main() -> Result<()> {
                         println!("  ○ VACUUM skipped (not needed)");
                     }
                     println!("  {} {} jobs deleted", "✓".green(), result["jobs_deleted"]);
-                    println!("  {} {} artifacts deleted", "✓".green(), result["artifacts_deleted"]);
+                    println!(
+                        "  {} {} artifacts deleted",
+                        "✓".green(),
+                        result["artifacts_deleted"]
+                    );
                     println!();
-                    let size_before_mb = result["db_size_before"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
-                    let size_after_mb = result["db_size_after"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
-                    println!("  {} {:.2} MB → {:.2} MB", "DB Size:".bold(), size_before_mb, size_after_mb);
+                    let size_before_mb =
+                        result["db_size_before"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
+                    let size_after_mb =
+                        result["db_size_after"].as_i64().unwrap_or(0) as f64 / (1024.0 * 1024.0);
+                    println!(
+                        "  {} {:.2} MB → {:.2} MB",
+                        "DB Size:".bold(),
+                        size_before_mb,
+                        size_after_mb
+                    );
                     let saved_mb = size_before_mb - size_after_mb;
                     if saved_mb > 0.0 {
                         println!("  {} {:.2} MB saved", "💾".bold(), saved_mb);

@@ -99,11 +99,9 @@ impl Scheduler {
     /// Uses spawn_blocking to avoid blocking the async executor
     async fn is_charging(&self) -> bool {
         // Use spawn_blocking to prevent blocking the tokio runtime
-        tokio::task::spawn_blocking(|| {
-            Self::is_charging_blocking()
-        })
-        .await
-        .unwrap_or(false) // If spawn fails, assume not charging
+        tokio::task::spawn_blocking(|| Self::is_charging_blocking())
+            .await
+            .unwrap_or(false) // If spawn fails, assume not charging
     }
 
     /// Blocking implementation of charging check
@@ -130,7 +128,7 @@ impl Scheduler {
                 }
             }
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             use std::fs;
@@ -163,13 +161,13 @@ impl Scheduler {
                 }
             }
         }
-        
+
         // Windows or unknown: assume desktop (plugged in)
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
             true
         }
-        
+
         #[cfg(any(target_os = "macos", target_os = "linux"))]
         {
             false
@@ -359,7 +357,7 @@ mod tests {
         // Result depends on system (may be true on desktop/AC, false on battery)
         // Test just verifies battery check runs without panic
         let _ready = scheduler.is_ready(&job).await;
-        
+
         // Note: The actual value varies by system (desktop vs laptop, charging vs not)
         // This test just ensures battery check logic doesn't panic
     }

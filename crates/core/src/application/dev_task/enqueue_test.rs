@@ -14,7 +14,7 @@ mod tests {
             payload: json!({}),
             priority: 0,
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("empty"));
@@ -29,7 +29,7 @@ mod tests {
             payload: json!({}),
             priority: 0,
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("too long"));
@@ -44,7 +44,7 @@ mod tests {
             payload: json!({}),
             priority: 0,
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("alphanumeric"));
@@ -59,7 +59,7 @@ mod tests {
             payload: json!({}),
             priority: 101, // Out of range
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("out of range"));
@@ -72,7 +72,7 @@ mod tests {
         for i in 1..=35 {
             deep = json!({"level": i, "nested": deep});
         }
-        
+
         let req = EnqueueRequest {
             queue: "test".to_string(),
             job_type: "test".to_string(),
@@ -80,7 +80,7 @@ mod tests {
             payload: deep,
             priority: 0,
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("deeply nested"));
@@ -95,9 +95,8 @@ mod tests {
             payload: json!({"data": "value"}),
             priority: 50,
         };
-        
+
         let result = validate_request(&req);
         assert!(result.is_ok());
     }
 }
-

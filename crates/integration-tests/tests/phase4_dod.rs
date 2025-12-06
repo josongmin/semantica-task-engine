@@ -161,11 +161,14 @@ async fn test_result_summary_storage() {
     // Simulate job completion with result
     let mut job = job_repo.find_by_id(&job_id).await.unwrap().unwrap();
     job.state = JobState::Done;
-    job.result_summary = Some(serde_json::json!({
-        "status": "success",
-        "files_indexed": 42,
-        "duration_ms": 1234
-    }).to_string());
+    job.result_summary = Some(
+        serde_json::json!({
+            "status": "success",
+            "files_indexed": 42,
+            "duration_ms": 1234
+        })
+        .to_string(),
+    );
     job.artifacts = Some("/tmp/artifacts/job-123".to_string());
     job_repo.update(&job).await.unwrap();
 
@@ -192,7 +195,10 @@ async fn test_maintenance_garbage_collection() {
     run_migrations(&pool).await.unwrap();
 
     let time_provider = Arc::new(SystemTimeProvider);
-    let job_repo = Arc::new(SqliteJobRepository::new(pool.clone(), time_provider.clone()));
+    let job_repo = Arc::new(SqliteJobRepository::new(
+        pool.clone(),
+        time_provider.clone(),
+    ));
 
     let service = DevTaskService::new(
         job_repo.clone(),
@@ -248,10 +254,7 @@ async fn test_maintenance_garbage_collection() {
 
     // Verify recent job still exists
     let recent_job_after = job_repo.find_by_id(&recent_job_id).await.unwrap();
-    assert!(
-        recent_job_after.is_some(),
-        "Recent job should still exist"
-    );
+    assert!(recent_job_after.is_some(), "Recent job should still exist");
 
     println!(
         "✅ DoD 4: Maintenance GC deleted {} jobs",
@@ -281,7 +284,7 @@ async fn test_phase4_schema_migration() {
     let index_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM sqlite_master 
          WHERE type = 'index' 
-         AND name IN ('idx_jobs_user_tag', 'idx_jobs_chain_group', 'idx_jobs_parent')"
+         AND name IN ('idx_jobs_user_tag', 'idx_jobs_chain_group', 'idx_jobs_parent')",
     )
     .fetch_one(&pool)
     .await
@@ -306,4 +309,3 @@ async fn test_structured_logging_exists() {
 
     println!("✅ DoD 6: Structured logging infrastructure exists (daemon/telemetry.rs)");
 }
-

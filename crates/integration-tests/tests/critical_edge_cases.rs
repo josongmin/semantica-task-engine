@@ -76,11 +76,7 @@ async fn test_concurrent_pop_no_duplicates() {
     let mut unique_jobs: Vec<_> = popped_jobs.iter().map(|(_, id)| id).collect();
     unique_jobs.sort();
     unique_jobs.dedup();
-    assert_eq!(
-        unique_jobs.len(),
-        10,
-        "No duplicate jobs should be popped"
-    );
+    assert_eq!(unique_jobs.len(), 10, "No duplicate jobs should be popped");
 
     println!("✅ Concurrent pop: No duplicates, all jobs popped exactly once");
 }
@@ -137,10 +133,7 @@ async fn test_malicious_input_validation() {
         priority: 0,
     };
     let result3 = service.enqueue(req3).await;
-    assert!(
-        result3.is_err(),
-        "Should reject null byte in subject_key"
-    );
+    assert!(result3.is_err(), "Should reject null byte in subject_key");
 
     // Test 4: Extremely large payload (> 10MB)
     let large_payload = serde_json::json!({
@@ -201,10 +194,7 @@ async fn test_boundary_values() {
 
     // Test 3: Pop order (MAX priority should come first)
     let popped = job_repo.pop_next("default").await.unwrap().unwrap();
-    assert_eq!(
-        popped.id, id1,
-        "MAX priority job should be popped first"
-    );
+    assert_eq!(popped.id, id1, "MAX priority job should be popped first");
 
     // Test 4: Out of range priority should be rejected
     let req_invalid = EnqueueRequest {
@@ -234,7 +224,10 @@ async fn test_boundary_values() {
     }
 
     // Verify generation increments correctly
-    let latest = job_repo.get_latest_generation("same-subject").await.unwrap();
+    let latest = job_repo
+        .get_latest_generation("same-subject")
+        .await
+        .unwrap();
     assert!(latest >= 100, "Generation should increment correctly");
 
     println!("✅ Boundary values: MAX/MIN values handled correctly");
@@ -425,4 +418,3 @@ async fn test_max_attempts_zero() {
 
     println!("✅ Max attempts = 0: Correctly fails without retry");
 }
-

@@ -291,7 +291,7 @@ async fn test_pop_time_supersede() {
     // Pop next job - should get v3 (latest generation)
     let popped = job_repo.pop_next("default").await.unwrap();
     assert!(popped.is_some(), "Should pop a job");
-    
+
     let popped_job = popped.unwrap();
     assert_eq!(
         popped_job.id, job_id_v3,
@@ -299,14 +299,15 @@ async fn test_pop_time_supersede() {
         popped_job.id
     );
     assert_eq!(
-        popped_job.payload.as_value()["version"], 3,
+        popped_job.payload.as_value()["version"],
+        3,
         "Should pop version 3"
     );
 
     // Verify v1 and v2 are marked as SUPERSEDED
     let v1 = job_repo.find_by_id(&job_id_v1).await.unwrap().unwrap();
     let v2 = job_repo.find_by_id(&job_id_v2).await.unwrap().unwrap();
-    
+
     use semantica_core::domain::JobState;
     assert_eq!(v1.state, JobState::Superseded, "v1 should be SUPERSEDED");
     assert_eq!(v2.state, JobState::Superseded, "v2 should be SUPERSEDED");

@@ -97,7 +97,9 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
     // Note: .len() returns character count, not bytes
     // This is safe because alphanumeric check below restricts to ASCII-compatible chars
     if req.queue.is_empty() {
-        return Err(AppError::Validation("Queue name cannot be empty".to_string()));
+        return Err(AppError::Validation(
+            "Queue name cannot be empty".to_string(),
+        ));
     }
     if req.queue.len() > MAX_QUEUE_NAME_LEN {
         return Err(AppError::Validation(format!(
@@ -106,7 +108,11 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
             req.queue.len()
         )));
     }
-    if !req.queue.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+    if !req
+        .queue
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
         return Err(AppError::Validation(
             "Queue name must be alphanumeric with _ or -".to_string(),
         ));
@@ -154,7 +160,7 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
             payload_str.len()
         )));
     }
-    
+
     // 2. Complexity check (nesting depth)
     validate_payload_complexity(&req.payload)?;
 
@@ -175,7 +181,7 @@ fn validate_request(req: &EnqueueRequest) -> Result<()> {
 /// during processing or serialization.
 fn validate_payload_complexity(value: &serde_json::Value) -> Result<()> {
     use crate::error::AppError;
-    
+
     fn check_depth(value: &serde_json::Value, current_depth: usize) -> Result<()> {
         if current_depth > MAX_PAYLOAD_DEPTH {
             return Err(AppError::Validation(format!(
@@ -183,7 +189,7 @@ fn validate_payload_complexity(value: &serde_json::Value) -> Result<()> {
                 MAX_PAYLOAD_DEPTH
             )));
         }
-        
+
         match value {
             serde_json::Value::Array(arr) => {
                 for item in arr {
@@ -197,9 +203,9 @@ fn validate_payload_complexity(value: &serde_json::Value) -> Result<()> {
             }
             _ => {}
         }
-        
+
         Ok(())
     }
-    
+
     check_depth(value, 0)
 }

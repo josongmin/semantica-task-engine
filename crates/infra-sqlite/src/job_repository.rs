@@ -17,7 +17,7 @@ fn map_sqlx_error(err: sqlx::Error) -> AppError {
             // Extract database-specific error code and message
             if let Some(code) = db_err.code() {
                 let code_str = code.as_ref();
-                
+
                 // SQLite error codes: https://www.sqlite.org/rescode.html
                 match code_str {
                     "2067" | "1555" => {
@@ -45,10 +45,7 @@ fn map_sqlx_error(err: sqlx::Error) -> AppError {
                     }
                     "13" => {
                         // SQLITE_FULL - database or disk is full
-                        AppError::Database(format!(
-                            "Database full: {}",
-                            db_err.message()
-                        ))
+                        AppError::Database(format!("Database full: {}", db_err.message()))
                     }
                     _ => {
                         // Other database errors
@@ -63,9 +60,7 @@ fn map_sqlx_error(err: sqlx::Error) -> AppError {
                 AppError::Database(format!("Database error: {}", db_err.message()))
             }
         }
-        sqlx::Error::RowNotFound => {
-            AppError::Database("Row not found".to_string())
-        }
+        sqlx::Error::RowNotFound => AppError::Database("Row not found".to_string()),
         sqlx::Error::ColumnNotFound(col) => {
             AppError::Database(format!("Column not found: {}", col))
         }
@@ -205,7 +200,12 @@ impl JobRepository for SqliteJobRepository {
         Ok(())
     }
 
-    async fn update_state(&self, id: &JobId, state: JobState, finished_at: Option<i64>) -> Result<()> {
+    async fn update_state(
+        &self,
+        id: &JobId,
+        state: JobState,
+        finished_at: Option<i64>,
+    ) -> Result<()> {
         // Optimization: Update only state and finished_at (reduces WAL writes)
         // Security: Conditional update to prevent race conditions (e.g., cancel after completion)
         let result = sqlx::query(
@@ -266,7 +266,7 @@ impl JobRepository for SqliteJobRepository {
         // Phase 3: Pop-time supersede
         // Strategy: Only pop jobs with latest generation for their subject_key
         // This prevents popping obsolete jobs that were enqueued before a newer version
-        
+
         let now = self.time_provider.now_millis();
         let state_running = JobState::Running.to_string();
         let state_queued = JobState::Queued.to_string();

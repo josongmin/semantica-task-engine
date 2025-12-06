@@ -41,7 +41,10 @@ impl Transaction for SqliteJobTransaction<'_> {
 fn map_transaction_error(operation: &str, err: sqlx::Error) -> AppError {
     match &err {
         sqlx::Error::Database(db_err) => {
-            let code = db_err.code().map(|c| c.to_string()).unwrap_or_else(|| "UNKNOWN".to_string());
+            let code = db_err
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "UNKNOWN".to_string());
             match code.as_str() {
                 "5" => AppError::Database(format!(
                     "Transaction {} failed: Database locked (SQLITE_BUSY)",
@@ -72,7 +75,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
         // This ensures only one transaction succeeds in creating the subject
         sqlx::query(
             "INSERT INTO subjects (subject_key, latest_generation) VALUES (?, 0)
-             ON CONFLICT(subject_key) DO NOTHING"
+             ON CONFLICT(subject_key) DO NOTHING",
         )
         .bind(subject_key)
         .execute(&mut *self.tx)
@@ -159,7 +162,7 @@ impl JobRepositoryTransaction for SqliteJobTransaction<'_> {
         // Update subjects table (UPSERT for concurrency safety)
         sqlx::query(
             "INSERT INTO subjects (subject_key, latest_generation) VALUES (?, ?)
-             ON CONFLICT(subject_key) DO UPDATE SET latest_generation = ?"
+             ON CONFLICT(subject_key) DO UPDATE SET latest_generation = ?",
         )
         .bind(subject_key)
         .bind(below_generation)

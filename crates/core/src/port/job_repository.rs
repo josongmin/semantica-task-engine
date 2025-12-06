@@ -17,12 +17,17 @@ pub trait JobRepository: Send + Sync {
     async fn update(&self, job: &Job) -> Result<()>;
 
     /// Update only job state and finished_at (for completion)
-    /// 
+    ///
     /// Optimization: Avoids updating all 19+ fields when only state changes
-    async fn update_state(&self, id: &JobId, state: JobState, finished_at: Option<i64>) -> Result<()>;
+    async fn update_state(
+        &self,
+        id: &JobId,
+        state: JobState,
+        finished_at: Option<i64>,
+    ) -> Result<()>;
 
     /// Increment attempts counter (for retry)
-    /// 
+    ///
     /// Optimization: Avoids full update when only attempts changes
     async fn increment_attempts(&self, id: &JobId) -> Result<()>;
 

@@ -58,9 +58,7 @@ impl RateLimiter {
 
             // Calculate elapsed time
             let now = Instant::now();
-            let elapsed_ms = now
-                .duration_since(self.state.creation_time)
-                .as_millis() as u32;
+            let elapsed_ms = now.duration_since(self.state.creation_time).as_millis() as u32;
             let delta_ms = elapsed_ms.saturating_sub(last_refill_ms);
 
             // Refill tokens
@@ -143,9 +141,9 @@ mod tests {
     #[tokio::test]
     async fn test_rate_limiter_concurrent() {
         use std::sync::Arc;
-        
+
         let limiter = Arc::new(RateLimiter::new(100, 50)); // 50 req/sec, burst 100
-        
+
         // Spawn 10 concurrent tasks, each trying 20 requests
         let mut handles = vec![];
         for _ in 0..10 {
@@ -161,13 +159,13 @@ mod tests {
             });
             handles.push(handle);
         }
-        
+
         // Collect results
         let mut total_allowed = 0;
         for handle in handles {
             total_allowed += handle.await.unwrap();
         }
-        
+
         // Total requests = 200, but only 100 should be allowed (burst limit)
         assert!(
             total_allowed <= 100,
@@ -181,4 +179,3 @@ mod tests {
         );
     }
 }
-
