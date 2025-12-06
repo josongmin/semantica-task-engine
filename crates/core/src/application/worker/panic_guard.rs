@@ -1,4 +1,9 @@
 // Panic isolation for worker safety (Phase 2, ADR-002)
+//
+// NOTE: This module is currently UNUSED in favor of tokio::task::spawn isolation.
+// Worker::process_next_job() uses tokio::spawn for panic isolation (see worker/mod.rs:164).
+// This code is kept for reference and potential future use.
+
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use tracing::{error, warn};
 
@@ -75,8 +80,8 @@ where
 
     match result {
         Ok(_) => {
-            // For now, we'll execute the future directly
-            // TODO: Implement proper async panic catching with tokio::task::spawn
+            // NOTE: Real implementation uses tokio::task::spawn (see worker/mod.rs:164)
+            // This simplified version executes the future directly
             PanicGuardResult::Success(future.await)
         }
         Err(panic_info) => {
