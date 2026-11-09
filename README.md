@@ -2,18 +2,18 @@
 
 # Semantica Task Engine
 
-A Rust orchestrator for local development-agent jobs. It separates SQLite-backed job state, subprocess execution, retry/recovery, and JSON-RPC delivery into explicit layers.
+<p align="center"><a href="#engineering-highlights">Engineering</a> · <a href="#architecture-at-a-glance">Architecture</a> · <a href="#build-and-run">Get started</a> · <a href="#documentation">Reference</a></p>
 
+A Rust orchestrator for local development-agent jobs. It separates SQLite-backed job state, subprocess execution, retry/recovery, and JSON-RPC delivery into explicit layers.
 
 ## Engineering highlights
 
-| Mechanism | Engineering purpose |
-| :--- | :--- |
-| **Durable job state** | A SQLite-backed repository records jobs and their lifecycle instead of keeping the queue only in memory. |
-| **Separated execution concerns** | Worker, scheduler, recovery, and maintenance responsibilities live behind core ports. |
-| **Explicit external interfaces** | A TCP JSON-RPC API serves CLI and SDK clients; the default development port is 9527. |
-| **Operational adapters** | Subprocess execution and system probes are distinct infrastructure adapters, with optional telemetry wiring. |
-
+| Mechanism | Engineering purpose | Source |
+| :--- | :--- | :--- |
+| **Durable job state** | A SQLite-backed repository records jobs and their lifecycle instead of keeping the queue only in memory. | [SQLite adapter](crates/infra-sqlite/) |
+| **Separated execution concerns** | Worker, scheduler, recovery, and maintenance responsibilities live behind core ports. | [Core ports](crates/core/) |
+| **Explicit external interfaces** | A TCP JSON-RPC API serves CLI and SDK clients; the default development port is 9527. | [RPC API](crates/api-rpc/) |
+| **Operational adapters** | Subprocess execution and system probes are distinct infrastructure adapters, with optional telemetry wiring. | [System adapters](crates/infra-system/) |
 
 ## Architecture at a glance
 
@@ -89,3 +89,5 @@ This repository retains an earlier local orchestration implementation. Historica
 - [Risk analysis](RISK_ANALYSIS.md)
 - [Rust SDK](crates/sdk/README.md)
 - [Python SDK](python-sdk/README.md)
+
+<p align="center"><sub><a href="https://github.com/josongmin">Project map</a> · <a href="#engineering-highlights">Back to overview</a></sub></p>
