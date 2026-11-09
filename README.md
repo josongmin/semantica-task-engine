@@ -1,6 +1,30 @@
+<p align="center"><img src="readme-banner.svg" alt="Semantica Task Engine — SQLite-backed orchestration for local agent jobs and subprocesses." width="100%"></p>
+
 # Semantica Task Engine
 
 A Rust orchestrator for local development-agent jobs. It separates SQLite-backed job state, subprocess execution, retry/recovery, and JSON-RPC delivery into explicit layers.
+
+
+## Engineering highlights
+
+| Mechanism | Engineering purpose |
+| :--- | :--- |
+| **Durable job state** | A SQLite-backed repository records jobs and their lifecycle instead of keeping the queue only in memory. |
+| **Separated execution concerns** | Worker, scheduler, recovery, and maintenance responsibilities live behind core ports. |
+| **Explicit external interfaces** | A TCP JSON-RPC API serves CLI and SDK clients; the default development port is 9527. |
+| **Operational adapters** | Subprocess execution and system probes are distinct infrastructure adapters, with optional telemetry wiring. |
+
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    C["CLI / Rust SDK / Python SDK"] --> R["TCP JSON-RPC"]
+    R --> A["Application: scheduler, worker, recovery"]
+    A --> D["Domain and ports"]
+    D --> S["SQLite repository"]
+    D --> P["Subprocess and system adapters"]
+```
 
 ## Design
 
