@@ -1,15 +1,15 @@
 # SemanticaTask Engine
 
-AI Native Dev Task Orchestrator - 로컬 환경에서 실행되는 고성능 태스크 오케스트레이터
+Rust task orchestrator for local development agents, with SQLite-backed job state,
+subprocess execution, retry/recovery, and JSON-RPC interfaces.
 
-## 프로젝트 상태
+## Status
 
-**현재 Phase**: Phase 4 (Production Ready - 99% 완료)
-
-✅ Phase 1: Core Foundation - **완료**
-✅ Phase 2: Execution Engine - **완료**  
-✅ Phase 3: AI-Native Scheduling - **완료**  
-🚀 Phase 4: Production Readiness - **진행 중** (DoD: 3/3)
+Earlier local orchestration implementation. The sections below retain the
+historical development checklist; they do not establish a current qualified
+release or production readiness. The two-week operating test remains unchecked
+in that checklist. Current operational qualification has not been re-run for
+this documentation update.
 
 ## 아키텍처
 
@@ -249,7 +249,11 @@ just verify   # 검증 스크립트 실행
 - **테스트**: mockall, tokio-test
 - **Observability**: OpenTelemetry (optional)
 
-## 성능 특성
+## Historical performance notes
+
+The figures below are historical development notes. They lack a pinned source,
+hardware/workload description, and reproducible results here, so they should not
+be used as current performance guarantees.
 
 - **처리량**: 초당 50+ job enqueue/pop
 - **메모리**: ~10MB (idle), ~50MB (100 jobs 처리)
